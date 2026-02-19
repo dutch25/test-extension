@@ -27,7 +27,7 @@ export const isLastPage = ($: CheerioAPI): boolean => {
 }
 
 export const ViHentaiInfo: SourceInfo = {
-    version: '1.0.0',
+    version: '1.0.1',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'YourName',

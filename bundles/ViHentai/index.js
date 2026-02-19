@@ -471,7 +471,7 @@ const isLastPage = ($) => {
 };
 exports.isLastPage = isLastPage;
 exports.ViHentaiInfo = {
-    version: '1.0.0',
+    version: '1.0.1',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'YourName',
