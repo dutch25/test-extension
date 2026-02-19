@@ -27,7 +27,7 @@ export const isLastPage = ($: CheerioAPI): boolean => {
 }
 
 export const ViHentaiInfo: SourceInfo = {
-    version: '1.0.2',
+    version: '1.0.3',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'YourName',
@@ -113,6 +113,14 @@ export class ViHentai extends Source {
     // ─── Fetch chapter images via API ─────────────────────────────────────────
     private async fetchChapterImagesFromAPI(mangaId: string, chapterPath: string): Promise<string[]> {
         console.log('=== fetchChapterImagesFromAPI called ===')
+        
+        // Always return test pages first to verify code runs
+        const testPages = [
+            'https://img.shousetsu.dev/images/data/test/test/test/0.jpg',
+            'https://img.shousetsu.dev/images/data/test/test/test/1.jpg',
+            'https://img.shousetsu.dev/images/data/test/test/test/2.jpg',
+        ]
+        
         try {
             // Fetch manga page to get seriesId from chapter list
             const mangaHtml = await this.requestManager.schedule(
@@ -175,8 +183,8 @@ export class ViHentai extends Source {
                 const imgUrl = `https://img.shousetsu.dev/images/data/${seriesId}/${chapterId}/${i}.jpg`
                 pages.push(imgUrl)
             }
-            console.log('Returning pages:', pages.length)
-            return pages
+            console.log('Returning test pages for debugging')
+            return testPages
 
         } catch (error) {
             console.log('Error fetching chapter images:', error)
