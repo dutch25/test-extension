@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
 exports.ViHentaiInfo = {
-    version: '1.1.16',
+    version: '1.1.17',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -566,37 +566,45 @@ class ViHentai extends types_1.Source {
     }
     async getChapterDetails(mangaId, chapterId) {
         try {
-            const url = `${BASE_URL}/truyen/${mangaId}/${chapterId}`;
-            const response = await this.requestManager.schedule(this.buildRequest(url), 1);
-            if (response.status !== 200) {
-                throw new Error(`HTTP ${response.status}`);
+            // First, get manga page to find series UUID
+            const mangaUrl = `${BASE_URL}/truyen/${mangaId}`;
+            const mangaRes = await this.requestManager.schedule(this.buildRequest(mangaUrl), 1);
+            const mangaHtml = mangaRes.data;
+            // Try to find series UUID in manga HTML
+            let seriesUUID = '';
+            // Look for series_id in script
+            const seriesMatch = mangaHtml.match(/series_id["\s:]+["']?([a-f0-9-]+)["']?/i);
+            if (seriesMatch)
+                seriesUUID = seriesMatch[1];
+            // Also try other patterns
+            if (!seriesUUID) {
+                const altMatch = mangaHtml.match(/"series"\s*:\s*["']([a-f0-9-]+)["']/i);
+                if (altMatch)
+                    seriesUUID = altMatch[1];
             }
-            const html = response.data;
-            // Search for shousetsu.dev URLs anywhere in the HTML (including JS)
-            const pages = [];
-            // Method 1: Regex search for any image URLs in entire HTML
-            const imgRegex = /https?:\/\/img\.shousetsu\.dev\/images\/data\/[^"'\s]+\.jpg/gi;
-            const matches = html.match(imgRegex) || [];
-            for (const match of matches) {
-                if (!pages.includes(match))
-                    pages.push(match);
+            // Get chapter page to find chapter UUID  
+            const chapterUrl = `${BASE_URL}/truyen/${mangaId}/${chapterId}`;
+            const chapterRes = await this.requestManager.schedule(this.buildRequest(chapterUrl), 1);
+            const chapterHtml = chapterRes.data;
+            // Try to find chapter UUID in chapter HTML
+            let chapterUUID = '';
+            // Look for chapter_id in script
+            const chapMatch = chapterHtml.match(/chapter_id["\s=]+["']?([a-f0-9-]+)["']?/i);
+            if (chapMatch)
+                chapterUUID = chapMatch[1];
+            // Try another pattern
+            if (!chapterUUID) {
+                const altChapMatch = chapterHtml.match(/"id"\s*:\s*["']([a-f0-9-]+)["'][^}]*chapter/i);
+                if (altChapMatch)
+                    chapterUUID = altChapMatch[1];
             }
-            // Method 2: Also try Cheerio
-            if (pages.length < 3) {
-                const $ = this.cheerio.load(html);
-                $('img').each((_, el) => {
-                    const src = $(el).attr('src') ?? $(el).attr('data-src') ?? '';
-                    if (src.includes('shousetsu.dev') && src.endsWith('.jpg')) {
-                        const cleanSrc = src.startsWith('//') ? 'https:' + src : src.trim();
-                        if (!pages.includes(cleanSrc))
-                            pages.push(cleanSrc);
-                    }
-                });
-            }
-            // Deduplicate and sort
-            const uniquePages = [...new Set(pages)];
-            if (uniquePages.length >= 3) {
-                return App.createChapterDetails({ id: chapterId, mangaId, pages: uniquePages });
+            // If we have both UUIDs, construct image URLs
+            if (seriesUUID && chapterUUID) {
+                const pages = [];
+                for (let i = 1; i <= 30; i++) {
+                    pages.push(`https://img.shousetsu.dev/images/data/${seriesUUID}/${chapterUUID}/${i}.jpg`);
+                }
+                return App.createChapterDetails({ id: chapterId, mangaId, pages });
             }
             // Fallback to test images
             return App.createChapterDetails({
