@@ -20,7 +20,7 @@ import { Parser } from './ViHentaiParser'
 const BASE_URL = 'https://vi-hentai.pro'
 
 export const ViHentaiInfo: SourceInfo = {
-    version: '1.1.4',
+    version: '1.1.5',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -153,32 +153,8 @@ export class ViHentai extends Source {
         this.CloudFlareError(response.status)
         const $ = this.cheerio.load(response.data as string)
 
-        const pages: string[] = []
-
-        // Debug - log all img tags
-        console.log('=== ALL IMGS ON PAGE ===')
-        $('img').each((_: number, el: any) => {
-            const src = $(el).attr('src') ?? ''
-            const dataSrc = $(el).attr('data-src') ?? ''
-            const id = $(el).attr('id') ?? ''
-            const cls = $(el).attr('class') ?? ''
-            console.log('img:', { src, dataSrc, id, cls })
-        })
-        console.log('=== END IMGS ===')
-
-        // Try various selectors
-        $('img').each((_: number, el: any) => {
-            let src = $(el).attr('data-src') ?? $(el).attr('src') ?? ''
-            src = src.trim()
-            
-            if (!src || src.startsWith('data:')) return
-            if (src.startsWith('//')) src = 'https:' + src
-            
-            // Only include shousetsu.dev images
-            if (src.includes('img.shousetsu.dev') || src.includes('shousetsu.dev')) {
-                pages.push(src)
-            }
-        })
+        // Use parser to get pages
+        const pages = this.parser.parseChapterDetails($)
 
         return App.createChapterDetails({
             id: chapterId,
