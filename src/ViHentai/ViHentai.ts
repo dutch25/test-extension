@@ -152,24 +152,30 @@ export class ViHentai extends Source {
         this.CloudFlareError(response.status)
         const $ = this.cheerio.load(response.data as string)
 
-        const collected: Array<{ index: number; src: string }> = []
+        const pages: string[] = []
 
-        $('div.image-container').each((_: number, container: any) => {
-            const index = parseInt($(container).attr('data-index') ?? '0', 10)
-            const img = $(container).find('img')
-
-            const src =
-                img.attr('data-src') ??
-                img.attr('src') ??
-                ''
-
-            if (src && !src.startsWith('data:')) {
-                collected.push({ index, src: src.trim() })
+        // Try the new selector first (div.image-container)
+        $('div.image-container img').each((_: number, el: any) => {
+            const src = $(el).attr('data-src') ?? $(el).attr('src') ?? ''
+            if (src && !src.startsWith('data:') && src.includes('img.shousetsu.dev')) {
+                pages.push(src.trim())
             }
         })
 
-        collected.sort((a, b) => a.index - b.index)
-        const pages = collected.map(p => p.src)
+        // If no images found, try the old selector (img.lazy-image)
+        if (pages.length === 0) {
+            $('img.lazy-image').each((_: number, el: any) => {
+                let src = $(el).attr('src') ?? $(el).attr('data-src') ?? ''
+                src = src.trim()
+                if (!src || src.includes('data:image')) return
+                if (src.startsWith('//')) src = 'https:' + src
+                if (src.includes('emoji') || src.includes('avatar') || src.includes('storage/images/default')) return
+                if (!src.includes('img.shousetsu.dev')) return
+                pages.push(src)
+            })
+        }
+
+        console.log('Found pages:', pages.length)
 
         return App.createChapterDetails({
             id: chapterId,
