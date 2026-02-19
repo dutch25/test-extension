@@ -20,7 +20,7 @@ import { Parser } from './ViHentaiParser'
 const BASE_URL = 'https://vi-hentai.pro'
 
 export const ViHentaiInfo: SourceInfo = {
-    version: '1.1.13',
+    version: '1.1.14',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -66,16 +66,8 @@ export class ViHentai extends Source {
         })
     }
 
-    async getCloudflareBypassRequestAsync() {
-        return App.createRequest({
-            url: BASE_URL,
-            method: 'GET',
-            headers: {
-                'referer': `${BASE_URL}/`,
-                'origin': BASE_URL,
-                'user-agent': await this.requestManager.getDefaultUserAgent()
-            }
-        })
+    async getCloudflareBypassRequestAsync(): Promise<any> {
+        return this.buildRequest(BASE_URL)
     }
 
     private slugFromUrl(url: string): string {
