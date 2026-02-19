@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
 exports.ViHentaiInfo = {
-    version: '1.1.21',
+    version: '1.1.22',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -605,30 +605,10 @@ class ViHentai extends types_1.Source {
                 }
                 return App.createChapterDetails({ id: chapterId, mangaId, pages: constructedPages });
             }
-            throw new Error('No images found');
+            throw new Error(`No images found. Cheerio: ${pages.length}, chapterId: ${extractedChapterId}, seriesId: ${seriesId}`);
         }
         catch (error) {
-            return App.createChapterDetails({
-                id: chapterId,
-                mangaId,
-                pages: [
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/1.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/2.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/3.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/4.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/5.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/6.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/7.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/8.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/9.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/10.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/11.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/12.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/13.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/14.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/15.jpg',
-                ],
-            });
+            throw new Error(`Chapter parse failed: ${error.message}`);
         }
     }
     async getHomePageSections(sectionCallback) {
