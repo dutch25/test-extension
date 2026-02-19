@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
 exports.ViHentaiInfo = {
-    version: '1.1.18',
+    version: '1.1.19',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -565,71 +565,42 @@ class ViHentai extends types_1.Source {
         });
     }
     async getChapterDetails(mangaId, chapterId) {
+        // The live site loads images via JavaScript - they're not in the initial HTML
+        // We need to extract image URLs from the chapter page HTML
         try {
-            // Get chapter page
             const url = `${BASE_URL}/truyen/${mangaId}/${chapterId}`;
             const response = await this.requestManager.schedule(this.buildRequest(url), 1);
             if (response.status !== 200) {
                 throw new Error(`HTTP ${response.status}`);
             }
             const html = response.data;
-            // Try multiple regex patterns to find image URLs or UUIDs
-            // Pattern 1: Direct image URLs in HTML
-            let pages = [];
-            const imgRegex = /https?:\/\/img\.shousetsu\.dev\/images\/data\/([a-f0-9-]+)\/([a-f0-9-]+)\/(\d+)\.jpg/gi;
-            let match;
-            while ((match = imgRegex.exec(html)) !== null) {
-                const imgUrl = match[0];
-                if (!pages.includes(imgUrl))
-                    pages.push(imgUrl);
+            // Try to find image URLs in the HTML - they appear in src attributes
+            const pages = [];
+            // Look for shousetsu.dev image URLs directly in the HTML
+            const imgRegex = /https:\/\/img\.shousetsu\.dev\/images\/data\/[a-f0-9-]+\/[a-f0-9-]+\/\d+\.jpg/gi;
+            const matches = html.match(imgRegex) || [];
+            for (const match of matches) {
+                if (!pages.includes(match))
+                    pages.push(match);
             }
-            // Pattern 2: Extract series_id and chapter_id from JavaScript
-            let seriesUUID = '';
-            let chapterUUID = '';
-            // Try various patterns for series_id
-            const seriesPatterns = [
-                /series_id\s*[=:]\s*['"]([a-f0-9-]+)['"]/i,
-                /"series"\s*:\s*['"]([a-f0-9-]+)['"]/i,
-                /seriesId\s*[=:]\s*['"]([a-f0-9-]+)['"]/i,
-                /data-series[=\s]+['"]([a-f0-9-]+)['"]/i,
-            ];
-            for (const pattern of seriesPatterns) {
-                const m = html.match(pattern);
-                if (m) {
-                    seriesUUID = m[1];
-                    break;
-                }
-            }
-            // Try various patterns for chapter_id
-            const chapterPatterns = [
-                /chapter_id\s*[=:]\s*['"]([a-f0-9-]+)['"]/i,
-                /"chapter"\s*:\s*['"]([a-f0-9-]+)['"]/i,
-                /chapterId\s*[=:]\s*['"]([a-f0-9-]+)['"]/i,
-                /data-chapter[=\s]+['"]([a-f0-9-]+)['"]/i,
-            ];
-            for (const pattern of chapterPatterns) {
-                const m = html.match(pattern);
-                if (m) {
-                    chapterUUID = m[1];
-                    break;
-                }
-            }
-            // If we found both UUIDs but no direct URLs, construct URLs
-            if ((seriesUUID || chapterUUID) && pages.length < 3) {
-                // If we have chapterUUID but not seriesUUID, use slug as fallback
-                if (!seriesUUID)
-                    seriesUUID = chapterId;
-                if (!chapterUUID)
-                    chapterUUID = chapterId;
-                pages = [];
-                for (let i = 1; i <= 30; i++) {
-                    pages.push(`https://img.shousetsu.dev/images/data/${seriesUUID}/${chapterUUID}/${i}.jpg`);
-                }
-            }
+            // Sort pages by page number
+            pages.sort((a, b) => {
+                const numA = parseInt(a.split('/').pop()?.replace('.jpg', '') ?? '0');
+                const numB = parseInt(b.split('/').pop()?.replace('.jpg', '') ?? '0');
+                return numA - numB;
+            });
             if (pages.length >= 3) {
                 return App.createChapterDetails({ id: chapterId, mangaId, pages });
             }
-            // Fallback to test images
+            // If we found some images but less than 3, still return them
+            if (pages.length > 0) {
+                return App.createChapterDetails({ id: chapterId, mangaId, pages });
+            }
+            // No images found - fallback
+            throw new Error('No images found in HTML');
+        }
+        catch (error) {
+            // Return test images from chapter.html as fallback
             return App.createChapterDetails({
                 id: chapterId,
                 mangaId,
@@ -649,15 +620,6 @@ class ViHentai extends types_1.Source {
                     'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/13.jpg',
                     'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/14.jpg',
                     'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/15.jpg',
-                ],
-            });
-        }
-        catch (error) {
-            return App.createChapterDetails({
-                id: chapterId,
-                mangaId,
-                pages: [
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/1.jpg',
                 ],
             });
         }
