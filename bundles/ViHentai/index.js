@@ -539,46 +539,56 @@ class ViHentai extends types_1.Source {
         let pages = this.parser.parseChapterDetails($);
         // If no images found in HTML, try API approach
         if (pages.length === 0) {
-            pages = await this.fetchChapterImagesFromAPI(chapterId);
+            pages = await this.fetchChapterImagesFromAPI(mangaId, chapterId);
         }
         return App.createChapterDetails({ id: chapterId, mangaId, pages });
     }
     // ─── Fetch chapter images via API ─────────────────────────────────────────
-    async fetchChapterImagesFromAPI(chapterPath) {
+    async fetchChapterImagesFromAPI(mangaId, chapterPath) {
         try {
-            // Fetch chapter page to get chapter_id and csrf_token
+            // Fetch manga page to get seriesId from chapter list
+            const mangaHtml = await this.requestManager.schedule(App.createRequest({ url: `${DOMAIN}/truyen/${mangaId}`, method: 'GET' }), 1);
+            this.CloudFlareError(mangaHtml.status);
+            const $manga = this.cheerio.load(mangaHtml.data);
+            // Try to find seriesId in the manga page - look for any data attributes or links
+            const scriptContent = $manga('script').html() || '';
+            // Look for series data in script tags
+            let seriesId = '';
+            const seriesMatch = scriptContent.match(/series_id["\s:]+["']?([a-f0-9-]+)["']?/i);
+            if (seriesMatch) {
+                seriesId = seriesMatch[1];
+            }
+            // Try another pattern - look for code/id in data
+            const codeMatch = scriptContent.match(/code["\s:]+["']?(\d+)["']?/i);
+            if (codeMatch && !seriesId) {
+                console.log('Found code:', codeMatch[1]);
+            }
+            // Also try to get from chapter link data
+            const chapterLink = $manga(`.overflow-y-auto a[href*="/truyen/${chapterPath.split('/')[0]}"]`).first();
+            const href = chapterLink.attr('href') || '';
+            console.log('Chapter href:', href);
+            // Fetch chapter page to get chapter_id
             const chapterHtml = await this.requestManager.schedule(App.createRequest({ url: `${DOMAIN}/truyen/${chapterPath}`, method: 'GET' }), 1);
-            this.CloudFlareError(chapterHtml.status);
-            const html = chapterHtml.data;
-            const $ = this.cheerio.load(html);
-            // Extract chapter_id and csrf_token from script tags
-            const scriptContent = $('script').html() || '';
-            const chapterIdMatch = scriptContent.match(/chapter_id\s*=\s*['"]([^'"]+)['"]/);
-            const csrfMatch = scriptContent.match(/csrf_token\s*=\s*['"]([^'"]+)['"]/);
+            const $chapter = this.cheerio.load(chapterHtml.data);
+            const chapScript = $chapter('script').html() || '';
+            const chapterIdMatch = chapScript.match(/chapter_id\s*=\s*['"]([^'"]+)['"]/);
             const chapterId = chapterIdMatch?.[1];
-            const csrfToken = csrfMatch?.[1];
-            if (!chapterId || !csrfToken) {
-                console.log('Could not extract chapter_id or csrf_token');
+            if (!chapterId) {
+                console.log('Could not extract chapter_id');
                 return [];
             }
-            // Try Livewire request to get chapter data with seriesId
-            const livewireResponse = await this.requestManager.schedule(App.createRequest({
-                url: `${DOMAIN}/livewire/message/read`,
-                method: 'POST',
-                headers: {
-                    'content-type': 'application/json',
-                    'x-csrf-token': csrfToken,
-                    'x-livewire-token': csrfToken,
-                    'referer': `${DOMAIN}/truyen/${chapterPath}`,
-                },
-                data: JSON.stringify({
-                    fingerprint: { id: 'read', name: 'read', locale: 'en' },
-                    serverMemo: { children: [], hash: '' },
-                    effects: { payload: { id: chapterId } }
-                }),
-            }), 1);
-            console.log('Livewire response:', livewireResponse.data);
-            return [];
+            // If we don't have seriesId, we can't construct image URLs
+            if (!seriesId) {
+                console.log('Could not extract seriesId from manga page');
+                return [];
+            }
+            // Construct image URLs
+            const pages = [];
+            for (let i = 0; i < 50; i++) {
+                const imgUrl = `https://img.shousetsu.dev/images/data/${seriesId}/${chapterId}/${i}.jpg`;
+                pages.push(imgUrl);
+            }
+            return pages;
         }
         catch (error) {
             console.log('Error fetching chapter images:', error);
