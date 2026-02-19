@@ -471,7 +471,7 @@ const isLastPage = ($) => {
 };
 exports.isLastPage = isLastPage;
 exports.ViHentaiInfo = {
-    version: '1.0.1',
+    version: '1.0.2',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'YourName',
@@ -534,17 +534,21 @@ class ViHentai extends types_1.Source {
     }
     // ─── Chapter Pages ────────────────────────────────────────────────────────
     async getChapterDetails(mangaId, chapterId) {
+        console.log('=== getChapterDetails called ===');
         // First, try to get images from HTML
         const $ = await this.DOMHTML(`${DOMAIN}/truyen/${chapterId}`);
         let pages = this.parser.parseChapterDetails($);
-        // If no images found in HTML, try API approach
+        console.log('Pages from HTML:', pages.length);
+        // Always try API approach as fallback
         if (pages.length === 0) {
+            console.log('No pages from HTML, trying API...');
             pages = await this.fetchChapterImagesFromAPI(mangaId, chapterId);
         }
         return App.createChapterDetails({ id: chapterId, mangaId, pages });
     }
     // ─── Fetch chapter images via API ─────────────────────────────────────────
     async fetchChapterImagesFromAPI(mangaId, chapterPath) {
+        console.log('=== fetchChapterImagesFromAPI called ===');
         try {
             // Fetch manga page to get seriesId from chapter list
             const mangaHtml = await this.requestManager.schedule(App.createRequest({ url: `${DOMAIN}/truyen/${mangaId}`, method: 'GET' }), 1);
@@ -557,6 +561,7 @@ class ViHentai extends types_1.Source {
             const seriesMatch = scriptContent.match(/series_id["\s:]+["']?([a-f0-9-]+)["']?/i);
             if (seriesMatch) {
                 seriesId = seriesMatch[1];
+                console.log('Found seriesId:', seriesId);
             }
             // Try another pattern - look for code/id in data
             const codeMatch = scriptContent.match(/code["\s:]+["']?(\d+)["']?/i);
@@ -582,12 +587,14 @@ class ViHentai extends types_1.Source {
                 console.log('Could not extract seriesId from manga page');
                 return [];
             }
+            console.log('Found seriesId:', seriesId, 'chapterId:', chapterId);
             // Construct image URLs
             const pages = [];
             for (let i = 0; i < 50; i++) {
                 const imgUrl = `https://img.shousetsu.dev/images/data/${seriesId}/${chapterId}/${i}.jpg`;
                 pages.push(imgUrl);
             }
+            console.log('Returning pages:', pages.length);
             return pages;
         }
         catch (error) {

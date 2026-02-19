@@ -27,7 +27,7 @@ export const isLastPage = ($: CheerioAPI): boolean => {
 }
 
 export const ViHentaiInfo: SourceInfo = {
-    version: '1.0.1',
+    version: '1.0.2',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'YourName',
@@ -94,12 +94,16 @@ export class ViHentai extends Source {
 
     // ─── Chapter Pages ────────────────────────────────────────────────────────
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
+        console.log('=== getChapterDetails called ===')
+        
         // First, try to get images from HTML
         const $ = await this.DOMHTML(`${DOMAIN}/truyen/${chapterId}`)
         let pages = this.parser.parseChapterDetails($)
+        console.log('Pages from HTML:', pages.length)
 
-        // If no images found in HTML, try API approach
+        // Always try API approach as fallback
         if (pages.length === 0) {
+            console.log('No pages from HTML, trying API...')
             pages = await this.fetchChapterImagesFromAPI(mangaId, chapterId)
         }
 
@@ -108,6 +112,7 @@ export class ViHentai extends Source {
 
     // ─── Fetch chapter images via API ─────────────────────────────────────────
     private async fetchChapterImagesFromAPI(mangaId: string, chapterPath: string): Promise<string[]> {
+        console.log('=== fetchChapterImagesFromAPI called ===')
         try {
             // Fetch manga page to get seriesId from chapter list
             const mangaHtml = await this.requestManager.schedule(
@@ -126,6 +131,7 @@ export class ViHentai extends Source {
             const seriesMatch = scriptContent.match(/series_id["\s:]+["']?([a-f0-9-]+)["']?/i)
             if (seriesMatch) {
                 seriesId = seriesMatch[1]
+                console.log('Found seriesId:', seriesId)
             }
             
             // Try another pattern - look for code/id in data
@@ -161,12 +167,15 @@ export class ViHentai extends Source {
                 return []
             }
 
+            console.log('Found seriesId:', seriesId, 'chapterId:', chapterId)
+            
             // Construct image URLs
             const pages: string[] = []
             for (let i = 0; i < 50; i++) {
                 const imgUrl = `https://img.shousetsu.dev/images/data/${seriesId}/${chapterId}/${i}.jpg`
                 pages.push(imgUrl)
             }
+            console.log('Returning pages:', pages.length)
             return pages
 
         } catch (error) {
