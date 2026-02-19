@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
 exports.ViHentaiInfo = {
-    version: '1.1.24',
+    version: '1.1.25',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -572,49 +572,40 @@ class ViHentai extends types_1.Source {
                 throw new Error(`HTTP ${response.status}`);
             }
             const html = response.data;
-            // Try Cheerio first - extract from img.lazy-image
-            const $ = this.cheerio.load(html);
-            const pages = [];
-            $('img.lazy-image').each((_, el) => {
-                let src = $(el).attr('data-src') ?? $(el).attr('src') ?? '';
-                src = src.trim();
-                if (!src)
-                    return;
-                if (src.startsWith('//'))
-                    src = 'https:' + src;
-                if (src.includes('shousetsu.dev') && !pages.includes(src)) {
-                    pages.push(src);
-                }
-            });
-            if (pages.length >= 3) {
-                return App.createChapterDetails({ id: chapterId, mangaId, pages });
+            // Check what's in the HTML
+            const hasShousetsu = html.includes('shousetsu.dev');
+            const hasLazyImage = html.includes('lazy-image');
+            const hasImgTag = html.includes('<img');
+            const hasImageContainer = html.includes('image-container');
+            const hasDataIndex = html.includes('data-index');
+            // Try different URL patterns
+            const patterns = [
+                /shousetsu\.dev[^"'\s>]+/gi,
+                /img\.shousetsu\.dev[^"'\s>]+/gi,
+                /\/images\/data\/[a-f0-9-]+\/[a-f0-9-]+/gi,
+            ];
+            let allMatches = [];
+            for (const pattern of patterns) {
+                const matches = html.match(pattern) || [];
+                allMatches = [...allMatches, ...matches];
             }
-            // Try regex directly on HTML string for image URLs
-            const imgUrlRegex = /https:\/\/img\.shousetsu\.dev\/images\/data\/([a-f0-9-]+)\/([a-f0-9-]+)\/\d+\.jpg/gi;
-            const imgMatches = html.match(imgUrlRegex);
             // Extract chapter_id from script
             const scriptChapterIdMatch = html.match(/chapter_id\s*=\s*['"]([a-f0-9-]+)['"]/i);
             const scriptChapterId = scriptChapterIdMatch?.[1];
-            // Debug: what's in the HTML
-            const hasShousetsu = html.includes('shousetsu.dev');
-            const hasLazyImage = html.includes('lazy-image');
-            const imgCount = imgMatches ? imgMatches.length : 0;
-            if (imgMatches && imgMatches.length > 0) {
-                // Extract series_id and chapter_id from the first image URL
-                const firstImg = imgMatches[0];
-                const urlParts = firstImg.match(/images\/data\/([a-f0-9-]+)\/([a-f0-9-]+)\//);
-                const extractedSeriesId = urlParts?.[1];
-                const extractedChapterIdFromImg = urlParts?.[2];
-                const chapterUUID = extractedChapterIdFromImg || scriptChapterId;
-                if (extractedSeriesId && chapterUUID) {
-                    const constructedPages = [];
+            // If we have chapter_id from script, we can try to construct URLs
+            if (scriptChapterId) {
+                // Try to find series_id from image paths if available
+                const seriesMatch = html.match(/\/images\/data\/([a-f0-9-]+)\//i);
+                const seriesId = seriesMatch?.[1];
+                if (seriesId) {
+                    const pages = [];
                     for (let i = 1; i <= 50; i++) {
-                        constructedPages.push(`https://img.shousetsu.dev/images/data/${extractedSeriesId}/${chapterUUID}/${i}.jpg`);
+                        pages.push(`https://img.shousetsu.dev/images/data/${seriesId}/${scriptChapterId}/${i}.jpg`);
                     }
-                    return App.createChapterDetails({ id: chapterId, mangaId, pages: constructedPages });
+                    return App.createChapterDetails({ id: chapterId, mangaId, pages });
                 }
             }
-            throw new Error(`No images. hasShousetsu:${hasShousetsu}, hasLazy:${hasLazyImage}, imgMatches:${imgCount}, chapterId:${scriptChapterId}`);
+            throw new Error(`No images. hasShousetsu:${hasShousetsu}, hasImg:${hasImgTag}, hasContainer:${hasImageContainer}, matches:${allMatches.length}, chapterId:${scriptChapterId}`);
         }
         catch (error) {
             throw new Error(`Chapter parse failed: ${error.message}`);
