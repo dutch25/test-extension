@@ -471,7 +471,7 @@ const isLastPage = ($) => {
 };
 exports.isLastPage = isLastPage;
 exports.ViHentaiInfo = {
-    version: '1.0.3',
+    version: '1.0.4',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'YourName',
@@ -535,16 +535,24 @@ class ViHentai extends types_1.Source {
     // ─── Chapter Pages ────────────────────────────────────────────────────────
     async getChapterDetails(mangaId, chapterId) {
         console.log('=== getChapterDetails called ===');
-        // First, try to get images from HTML
-        const $ = await this.DOMHTML(`${DOMAIN}/truyen/${chapterId}`);
-        let pages = this.parser.parseChapterDetails($);
-        console.log('Pages from HTML:', pages.length);
-        // Always try API approach as fallback
-        if (pages.length === 0) {
-            console.log('No pages from HTML, trying API...');
-            pages = await this.fetchChapterImagesFromAPI(mangaId, chapterId);
+        console.log('mangaId:', mangaId, 'chapterId:', chapterId);
+        try {
+            // First, try to get images from HTML
+            const $ = await this.DOMHTML(`${DOMAIN}/truyen/${chapterId}`);
+            let pages = this.parser.parseChapterDetails($);
+            console.log('Pages from HTML:', pages.length);
+            // Always try API approach as fallback
+            if (pages.length === 0) {
+                console.log('No pages from HTML, trying API...');
+                pages = await this.fetchChapterImagesFromAPI(mangaId, chapterId);
+            }
+            console.log('Final pages count:', pages.length);
+            return App.createChapterDetails({ id: chapterId, mangaId, pages });
         }
-        return App.createChapterDetails({ id: chapterId, mangaId, pages });
+        catch (error) {
+            console.log('ERROR in getChapterDetails:', error);
+            return App.createChapterDetails({ id: chapterId, mangaId, pages: [] });
+        }
     }
     // ─── Fetch chapter images via API ─────────────────────────────────────────
     async fetchChapterImagesFromAPI(mangaId, chapterPath) {
