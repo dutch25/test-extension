@@ -688,28 +688,28 @@ class Parser {
     // ─── Manga Details ────────────────────────────────────────────────────────
     parseMangaDetails($, mangaId) {
         const tags = [];
-        $('.series-information .info-item a, .manga-info-tags a, .list-tags a').each((_, el) => {
-            const label = $(el).text().trim();
+        $('.bg-gray-500 a[href*="/the-loai/"]').each((_, el) => {
             const href = $(el).attr('href') ?? '';
-            const id = 'genre.' + (href.split('/').pop() ?? label);
+            const label = $(el).text().trim();
+            const id = 'genre.' + (href.split('/the-loai/').pop() ?? label);
             if (label)
                 tags.push(App.createTag({ label, id }));
         });
         const title = $('h1.series-name, h1.manga-title, h1.title, .series-title h1').first().text().trim()
             || $('h1').first().text().trim();
-        const imgEl = $('.series-cover img, .manga-cover img, .detail-avatar img, .cover-frame .cover').first();
-        let image = imgEl.attr('src') ?? imgEl.attr('data-src') ?? imgEl.attr('data-original') ?? '';
-        if (!image) {
-            const style = imgEl.attr('style') ?? '';
-            const match = style.match(/url\(['"]?([^'"]+)['"]?\)/);
-            if (match)
-                image = match[1];
-        }
+        const coverEl = $('.cover-frame').first();
+        let image = '';
+        const style = coverEl.attr('style') ?? '';
+        const match = style.match(/background-image:\s*url\(['"]?([^'"]+)['"]?\)/);
+        if (match)
+            image = match[1];
         if (image.startsWith('//'))
             image = 'https:' + image;
-        const author = $('.info-item:contains("Tác giả") a, .author a').first().text().trim();
-        const status = $('.info-item:contains("Trạng thái") span, .info-item:contains("Tình trạng") span').first().text().trim();
-        const desc = $('.summary-content, .series-description, .manga-description').first().text().trim();
+        const author = $('.text-gray-500:contains("Tác giả")').next('a').text().trim()
+            || $('a[href*="/tac-gia/"]').first().text().trim();
+        const statusEl = $('.text-gray-500:contains("Tình trạng")').next('a').first();
+        const status = statusEl.text().trim();
+        const desc = $('.line-clamp-6, .series-description, .summary-content').first().text().trim();
         return App.createSourceManga({
             id: mangaId,
             mangaInfo: App.createMangaInfo({
@@ -733,7 +733,8 @@ class Parser {
             const hrefParts = href.split('/truyen/').pop() ?? '';
             if (!hrefParts)
                 return;
-            const chapterName = $('.text-ellipsis', el).text().trim();
+            const chapterName = $('span.text-ellipsis', el).text().trim()
+                || $(el).text().trim();
             const numMatch = chapterName.match(/(\d+(?:\.\d+)?)/);
             const chapNum = numMatch ? parseFloat(numMatch[1]) : 0;
             const timeEl = $('.timeago', el);
@@ -752,10 +753,23 @@ class Parser {
     // ─── Chapter Details (images) ─────────────────────────────────────────────
     parseChapterDetails($) {
         const pages = [];
-        $('.image-container img.lazy-image').each((_, el) => {
-            let src = $(el).attr('src')
-                ?? $(el).attr('data-src')
-                ?? '';
+        // Handle first ~8 images that have direct src attribute
+        $('img:not(.lazy-image)').each((_, el) => {
+            let src = $(el).attr('src') ?? '';
+            src = src.trim();
+            if (!src || src.includes('data:image'))
+                return;
+            if (src.startsWith('//'))
+                src = 'https:' + src;
+            if (src.includes('emoji') || src.includes('avatar') || src.includes('storage/images/default'))
+                return;
+            if (!src.includes('img.shousetsu.dev'))
+                return;
+            pages.push(src);
+        });
+        // Handle lazy-loaded images with data-src attribute
+        $('img.lazy-image').each((_, el) => {
+            let src = $(el).attr('data-src') ?? '';
             src = src.trim();
             if (!src || src.includes('data:image'))
                 return;
