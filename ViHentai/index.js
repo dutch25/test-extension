@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
 exports.ViHentaiInfo = {
-    version: '1.1.13',
+    version: '1.1.14',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -510,15 +510,7 @@ class ViHentai extends types_1.Source {
         });
     }
     async getCloudflareBypassRequestAsync() {
-        return App.createRequest({
-            url: BASE_URL,
-            method: 'GET',
-            headers: {
-                'referer': `${BASE_URL}/`,
-                'origin': BASE_URL,
-                'user-agent': await this.requestManager.getDefaultUserAgent()
-            }
-        });
+        return this.buildRequest(BASE_URL);
     }
     slugFromUrl(url) {
         return url.replace(/\/$/, '').split('/').pop() ?? url;
