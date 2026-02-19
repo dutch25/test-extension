@@ -27,7 +27,7 @@ export const isLastPage = ($: CheerioAPI): boolean => {
 }
 
 export const ViHentaiInfo: SourceInfo = {
-    version: '1.0.5',
+    version: '1.0.6',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'YourName',
@@ -94,22 +94,22 @@ export class ViHentai extends Source {
 
     // ─── Chapter Pages ────────────────────────────────────────────────────────
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
-        // ALWAYS return test pages first - skip HTML parsing entirely for testing
-        const testPages = [
-            'https://img.shousetsu.dev/images/data/test-series/test-chapter/0.jpg',
-            'https://img.shousetsu.dev/images/data/test-series/test-chapter/1.jpg',
-            'https://img.shousetsu.dev/images/data/test-series/test-chapter/2.jpg',
-            'https://img.shousetsu.dev/images/data/test-series/test-chapter/3.jpg',
-            'https://img.shousetsu.dev/images/data/test-series/test-chapter/4.jpg',
-        ]
+        console.log('=== getChapterDetails === mangaId:', mangaId, 'chapterId:', chapterId)
         
-        console.log('=== getChapterDetails === mangaId:', mangaId, 'chapterId:', chapterId, 'returning test pages')
-        
-        return App.createChapterDetails({ 
-            id: chapterId, 
-            mangaId, 
-            pages: testPages 
-        })
+        // First, try to get images from HTML
+        const $ = await this.DOMHTML(`${DOMAIN}/truyen/${chapterId}`)
+        let pages = this.parser.parseChapterDetails($)
+        console.log('Pages from HTML:', pages.length)
+
+        // If no images, try API approach
+        if (pages.length === 0) {
+            console.log('No pages from HTML, trying fallback...')
+            // Return empty for now - need to find seriesId
+            return App.createChapterDetails({ id: chapterId, mangaId, pages: [] })
+        }
+
+        console.log('Returning pages:', pages.length)
+        return App.createChapterDetails({ id: chapterId, mangaId, pages })
     }
 
     // ─── Fetch chapter images via API ─────────────────────────────────────────
