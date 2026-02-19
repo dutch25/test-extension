@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
 exports.ViHentaiInfo = {
-    version: '1.1.3',
+    version: '1.1.4',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -574,43 +574,33 @@ class ViHentai extends types_1.Source {
     }
     async getChapterDetails(mangaId, chapterId) {
         const url = `${BASE_URL}/truyen/${mangaId}/${chapterId}`;
-        console.log('Chapter URL:', url);
         const response = await this.requestManager.schedule(this.buildRequest(url), 1);
         this.CloudFlareError(response.status);
         const $ = this.cheerio.load(response.data);
-        // Debug: check what selectors exist
-        const containerImgCount = $('div.image-container img').length;
-        const lazyImageCount = $('img.lazy-image').length;
-        console.log('div.image-container img count:', containerImgCount);
-        console.log('img.lazy-image count:', lazyImageCount);
-        // Check all img tags with shousetsu.dev
-        const allImgCount = $('img[src*="shousetsu.dev"], img[data-src*="shousetsu.dev"]').length;
-        console.log('All shousetsu.dev images:', allImgCount);
         const pages = [];
-        // Try the new selector first (div.image-container)
-        $('div.image-container img').each((_, el) => {
-            const src = $(el).attr('data-src') ?? $(el).attr('src') ?? '';
-            if (src && !src.startsWith('data:') && src.includes('img.shousetsu.dev')) {
-                pages.push(src.trim());
+        // Debug - log all img tags
+        console.log('=== ALL IMGS ON PAGE ===');
+        $('img').each((_, el) => {
+            const src = $(el).attr('src') ?? '';
+            const dataSrc = $(el).attr('data-src') ?? '';
+            const id = $(el).attr('id') ?? '';
+            const cls = $(el).attr('class') ?? '';
+            console.log('img:', { src, dataSrc, id, cls });
+        });
+        console.log('=== END IMGS ===');
+        // Try various selectors
+        $('img').each((_, el) => {
+            let src = $(el).attr('data-src') ?? $(el).attr('src') ?? '';
+            src = src.trim();
+            if (!src || src.startsWith('data:'))
+                return;
+            if (src.startsWith('//'))
+                src = 'https:' + src;
+            // Only include shousetsu.dev images
+            if (src.includes('img.shousetsu.dev') || src.includes('shousetsu.dev')) {
+                pages.push(src);
             }
         });
-        // If no images found, try the old selector (img.lazy-image)
-        if (pages.length === 0) {
-            $('img.lazy-image').each((_, el) => {
-                let src = $(el).attr('src') ?? $(el).attr('data-src') ?? '';
-                src = src.trim();
-                if (!src || src.includes('data:image'))
-                    return;
-                if (src.startsWith('//'))
-                    src = 'https:' + src;
-                if (src.includes('emoji') || src.includes('avatar') || src.includes('storage/images/default'))
-                    return;
-                if (!src.includes('img.shousetsu.dev'))
-                    return;
-                pages.push(src);
-            });
-        }
-        console.log('Found pages:', pages.length, pages);
         return App.createChapterDetails({
             id: chapterId,
             mangaId,
