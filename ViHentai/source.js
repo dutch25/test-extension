@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
 exports.ViHentaiInfo = {
-    version: '1.1.14',
+    version: '1.1.15',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -569,24 +569,40 @@ class ViHentai extends types_1.Source {
             const url = `${BASE_URL}/truyen/${mangaId}/${chapterId}`;
             const response = await this.requestManager.schedule(this.buildRequest(url), 1);
             if (response.status !== 200) {
-                this.CloudFlareError(response.status);
+                throw new Error(`HTTP ${response.status}`);
             }
-            const $ = this.cheerio.load(response.data);
+            const html = response.data;
+            const $ = this.cheerio.load(html);
             const pages = [];
-            // Try to find images with shousetsu.dev in src or data-src
-            $('img').each((_, el) => {
-                const src = $(el).attr('src') ?? $(el).attr('data-src') ?? '';
-                if (src.includes('shousetsu.dev') && !src.includes('data:image')) {
-                    const cleanSrc = src.startsWith('//') ? 'https:' + src : src.trim();
-                    if (!pages.includes(cleanSrc))
-                        pages.push(cleanSrc);
-                }
-            });
-            // If we got valid pages with images, return them
+            // Try multiple selectors
+            const selectors = [
+                'img.lazy-image',
+                'img[src*="shousetsu"]',
+                'img[data-src*="shousetsu"]',
+                'div.image-container img',
+                'img'
+            ];
+            for (const selector of selectors) {
+                $(selector).each((_, el) => {
+                    const src = $(el).attr('src') ?? $(el).attr('data-src') ?? '';
+                    if (src.includes('shousetsu.dev') && !src.includes('data:image')) {
+                        const cleanSrc = src.startsWith('//') ? 'https:' + src : src.trim();
+                        if (!pages.includes(cleanSrc))
+                            pages.push(cleanSrc);
+                    }
+                });
+                if (pages.length >= 3)
+                    break;
+            }
+            // Check page content length to see if we got real HTML or blocked
+            const pageLength = html.length;
+            const hasImageContainer = html.includes('image-container');
+            const hasLazyImage = html.includes('lazy-image');
+            // If pages found, return them
             if (pages.length >= 3) {
                 return App.createChapterDetails({ id: chapterId, mangaId, pages });
             }
-            // Otherwise return test images from chapter.html
+            // Otherwise return test images
             return App.createChapterDetails({
                 id: chapterId,
                 mangaId,
