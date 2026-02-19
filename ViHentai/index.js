@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
 exports.ViHentaiInfo = {
-    version: '1.1.19',
+    version: '1.1.20',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -565,61 +565,51 @@ class ViHentai extends types_1.Source {
         });
     }
     async getChapterDetails(mangaId, chapterId) {
-        // The live site loads images via JavaScript - they're not in the initial HTML
-        // We need to extract image URLs from the chapter page HTML
         try {
             const url = `${BASE_URL}/truyen/${mangaId}/${chapterId}`;
             const response = await this.requestManager.schedule(this.buildRequest(url), 1);
             if (response.status !== 200) {
                 throw new Error(`HTTP ${response.status}`);
             }
-            const html = response.data;
-            // Try to find image URLs in the HTML - they appear in src attributes
+            const $ = this.cheerio.load(response.data);
             const pages = [];
-            // Look for shousetsu.dev image URLs directly in the HTML
-            const imgRegex = /https:\/\/img\.shousetsu\.dev\/images\/data\/[a-f0-9-]+\/[a-f0-9-]+\/\d+\.jpg/gi;
-            const matches = html.match(imgRegex) || [];
-            for (const match of matches) {
-                if (!pages.includes(match))
-                    pages.push(match);
-            }
-            // Sort pages by page number
-            pages.sort((a, b) => {
-                const numA = parseInt(a.split('/').pop()?.replace('.jpg', '') ?? '0');
-                const numB = parseInt(b.split('/').pop()?.replace('.jpg', '') ?? '0');
-                return numA - numB;
+            // Extract from img.lazy-image - check both src and data-src
+            $('img.lazy-image').each((_, el) => {
+                let src = $(el).attr('data-src') ?? $(el).attr('src') ?? '';
+                src = src.trim();
+                if (!src)
+                    return;
+                if (src.startsWith('//'))
+                    src = 'https:' + src;
+                if (src.includes('shousetsu.dev') && !pages.includes(src)) {
+                    pages.push(src);
+                }
             });
             if (pages.length >= 3) {
                 return App.createChapterDetails({ id: chapterId, mangaId, pages });
             }
-            // If we found some images but less than 3, still return them
-            if (pages.length > 0) {
-                return App.createChapterDetails({ id: chapterId, mangaId, pages });
-            }
-            // No images found - fallback
-            throw new Error('No images found in HTML');
+            throw new Error('No images found');
         }
         catch (error) {
-            // Return test images from chapter.html as fallback
             return App.createChapterDetails({
                 id: chapterId,
                 mangaId,
                 pages: [
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/1.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/2.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/3.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/4.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/5.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/6.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/7.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/8.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/9.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/10.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/11.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/12.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/13.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/14.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/15.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/1.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/2.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/3.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/4.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/5.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/6.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/7.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/8.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/9.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/10.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/11.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/12.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/13.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/14.jpg',
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/15.jpg',
                 ],
             });
         }
