@@ -27,7 +27,7 @@ export const isLastPage = ($: CheerioAPI): boolean => {
 }
 
 export const ViHentaiInfo: SourceInfo = {
-    version: '1.0.4',
+    version: '1.0.5',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'YourName',
@@ -94,27 +94,22 @@ export class ViHentai extends Source {
 
     // ─── Chapter Pages ────────────────────────────────────────────────────────
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
-        console.log('=== getChapterDetails called ===')
-        console.log('mangaId:', mangaId, 'chapterId:', chapterId)
+        // ALWAYS return test pages first - skip HTML parsing entirely for testing
+        const testPages = [
+            'https://img.shousetsu.dev/images/data/test-series/test-chapter/0.jpg',
+            'https://img.shousetsu.dev/images/data/test-series/test-chapter/1.jpg',
+            'https://img.shousetsu.dev/images/data/test-series/test-chapter/2.jpg',
+            'https://img.shousetsu.dev/images/data/test-series/test-chapter/3.jpg',
+            'https://img.shousetsu.dev/images/data/test-series/test-chapter/4.jpg',
+        ]
         
-        try {
-            // First, try to get images from HTML
-            const $ = await this.DOMHTML(`${DOMAIN}/truyen/${chapterId}`)
-            let pages = this.parser.parseChapterDetails($)
-            console.log('Pages from HTML:', pages.length)
-
-            // Always try API approach as fallback
-            if (pages.length === 0) {
-                console.log('No pages from HTML, trying API...')
-                pages = await this.fetchChapterImagesFromAPI(mangaId, chapterId)
-            }
-
-            console.log('Final pages count:', pages.length)
-            return App.createChapterDetails({ id: chapterId, mangaId, pages })
-        } catch (error) {
-            console.log('ERROR in getChapterDetails:', error)
-            return App.createChapterDetails({ id: chapterId, mangaId, pages: [] })
-        }
+        console.log('=== getChapterDetails === mangaId:', mangaId, 'chapterId:', chapterId, 'returning test pages')
+        
+        return App.createChapterDetails({ 
+            id: chapterId, 
+            mangaId, 
+            pages: testPages 
+        })
     }
 
     // ─── Fetch chapter images via API ─────────────────────────────────────────
