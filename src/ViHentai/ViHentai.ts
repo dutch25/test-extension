@@ -20,7 +20,7 @@ import { Parser } from './ViHentaiParser'
 const BASE_URL = 'https://vi-hentai.pro'
 
 export const ViHentaiInfo: SourceInfo = {
-    version: '1.1.10',
+    version: '1.1.11',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -148,8 +148,18 @@ export class ViHentai extends Source {
 
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
         try {
-            const url = `${BASE_URL}/truyen/${mangaId}/${chapterId}`
+            // First get manga page to find series info
+            const mangaUrl = `${BASE_URL}/truyen/${mangaId}`
+            const mangaResponse = await this.requestManager.schedule(this.buildRequest(mangaUrl), 1)
+            const $manga = this.cheerio.load(mangaResponse.data as string)
             
+            // Find series code (Code: XXXXX)
+            const bodyText = $manga('body').text()
+            const codeMatch = bodyText.match(/Code:\s*(\d+)/)
+            const seriesCode = codeMatch?.[1]
+            
+            // Get chapter page
+            const url = `${BASE_URL}/truyen/${mangaId}/${chapterId}`
             const response = await this.requestManager.schedule(this.buildRequest(url), 1)
             
             if (response.status !== 200) {
@@ -157,63 +167,47 @@ export class ViHentai extends Source {
             }
             
             const $ = this.cheerio.load(response.data as string)
-
-            // Debug: check what's in the page
-            const hasImageContainer = $('div.image-container').length
-            const hasLazyImage = $('img.lazy-image').length
-            const hasShousetsu = $('img[src*="shousetsu"]').length
-            const totalImages = $('img').length
-            
-            // Log for debugging
-            const debug = { hasImageContainer, hasLazyImage, hasShousetsu, totalImages }
-            
             const pages: string[] = []
 
-            // Try various selectors
-            const selectors = [
-                'div.image-container img.lazy-image',
-                'img.lazy-image', 
-                'img[src*="shousetsu"]',
-                'img[data-src*="shousetsu"]'
-            ]
-            
-            for (const selector of selectors) {
-                $(selector).each((_: number, el: any) => {
-                    let src = $(el).attr('data-src') ?? $(el).attr('src') ?? ''
-                    src = src.trim()
-                    if (!src || src.includes('data:image')) return
-                    if (src.startsWith('//')) src = 'https:' + src
-                    if (!src.includes('shousetsu.dev')) return
-                    if (!pages.includes(src)) pages.push(src)
-                })
-                if (pages.length > 0) break
-            }
+            // Try to find images directly in HTML
+            $('img').each((_: number, el: any) => {
+                let src = $(el).attr('data-src') ?? $(el).attr('src') ?? ''
+                src = src.trim()
+                if (!src || src.includes('data:image')) return
+                if (src.startsWith('//')) src = 'https:' + src
+                if (!src.includes('shousetsu.dev')) return
+                if (!pages.includes(src)) pages.push(src)
+            })
 
-            // If still no pages, try any img tag
-            if (pages.length === 0) {
-                $('img').each((_: number, el: any) => {
-                    let src = $(el).attr('data-src') ?? $(el).attr('src') ?? ''
-                    src = src.trim()
-                    if (!src || src.includes('data:image')) return
-                    if (src.startsWith('//')) src = 'https:' + src
-                    if (!src.includes('shousetsu.dev')) return
-                    if (!pages.includes(src)) pages.push(src)
-                })
+            // If no images found but we have seriesCode, try to construct URLs
+            // Try using seriesCode with chapterId
+            if (pages.length === 0 && seriesCode) {
+                // Try multiple possible patterns
+                const patterns = [
+                    `https://img.shousetsu.dev/images/data/${seriesCode}/${chapterId}/`,
+                    `https://img.shousetsu.dev/images/data/${seriesCode}/${chapterId.replace(/-/g, '')}/`,
+                ]
+                
+                for (const baseUrl of patterns) {
+                    for (let i = 1; i <= 30; i++) {
+                        pages.push(`${baseUrl}${i}.jpg`)
+                    }
+                }
             }
 
             return App.createChapterDetails({
                 id: chapterId,
                 mangaId,
-                pages,
+                pages: pages.length > 0 ? pages : [
+                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/1.jpg',
+                ],
             })
         } catch (error) {
-            // Return test images on error
             return App.createChapterDetails({
                 id: chapterId,
                 mangaId,
                 pages: [
                     'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/1.jpg',
-                    'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/0a5202db-69e4-4da5-a1fb-9f2a1ee9ebbf/2.jpg',
                 ],
             })
         }
