@@ -471,7 +471,7 @@ const isLastPage = ($) => {
 };
 exports.isLastPage = isLastPage;
 exports.ViHentaiInfo = {
-    version: '1.0.7',
+    version: '1.0.8',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'YourName',
@@ -817,9 +817,10 @@ class Parser {
     // ─── Chapter Details (images) ─────────────────────────────────────────────
     parseChapterDetails($) {
         const pages = [];
-        // Handle first ~8 images that have direct src attribute
-        $('img:not(.lazy-image)').each((_, el) => {
-            let src = $(el).attr('src') ?? '';
+        // Handle images - check both src and data-src attributes
+        // First images have src, lazy-loaded ones have data-src
+        $('img.lazy-image').each((_, el) => {
+            let src = $(el).attr('src') ?? $(el).attr('data-src') ?? '';
             src = src.trim();
             if (!src || src.includes('data:image'))
                 return;
@@ -829,16 +830,6 @@ class Parser {
                 return;
             if (!src.includes('img.shousetsu.dev'))
                 return;
-            pages.push(src);
-        });
-        // Handle lazy-loaded images with data-src attribute
-        $('img.lazy-image').each((_, el) => {
-            let src = $(el).attr('data-src') ?? '';
-            src = src.trim();
-            if (!src || src.includes('data:image'))
-                return;
-            if (src.startsWith('//'))
-                src = 'https:' + src;
             pages.push(src);
         });
         return pages;
