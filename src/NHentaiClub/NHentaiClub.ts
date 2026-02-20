@@ -21,7 +21,7 @@ const CDN_URL = 'https://i1.nhentaiclub.shop'
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev'
 
 export const NHentaiClubInfo: SourceInfo = {
-    version: '1.1.35',
+    version: '1.1.36',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -150,60 +150,30 @@ export class NHentaiClub extends Source {
     }
 
     async getChapters(mangaId: string): Promise<Chapter[]> {
-        const request = App.createRequest({
-            url: `${BASE_URL}/g/${mangaId}`,
-            method: 'GET',
-        })
-
-        console.log('Fetching chapters for:', mangaId)
-
-        const response = await this.requestManager.schedule(request, 0)
-
-        // Log response status
-        console.log('Response status:', response.status)
-
-        const $ = this.cheerio.load(response.data as string)
-
-        // Log HTML length
-        console.log('HTML length:', response.data?.length ?? 0)
-
-        // Log all chapter links found
-        const chapterLinks = $('a[href^="/read/"]').map((_: any, el: any) => $(el).attr('href')).get()
-        console.log('Chapter links found:', chapterLinks)
-
-        const chapters = this.parser.parseChapters($, mangaId)
-        console.log('Parsed chapters:', chapters.map(c => ({ id: c.id, name: c.name })))
+        const response = await this.requestManager.schedule(
+            App.createRequest({ url: `${BASE_URL}/g/${mangaId}`, method: 'GET' }), 0
+        )
+        const html = response.data as string
+        console.log('HTML length:', html.length)
+        // Pass raw HTML string — chapter list is NOT in static HTML, only in embedded JSON
+        const chapters = this.parser.parseChapters(html, mangaId)
+        console.log('Parsed chapters:', chapters.map(c => c.id))
         return chapters
     }
 
     async getChapterDetails(mangaId: string, chapterId: string): Promise<ChapterDetails> {
         console.log('getChapterDetails:', mangaId, chapterId)
 
-        // Fetch manga page to get page count from embedded JSON
         const response = await this.requestManager.schedule(
             App.createRequest({ url: `${BASE_URL}/g/${mangaId}`, method: 'GET' }), 1
         )
         const html = response.data as string
 
-        // Chapter data is embedded in the HTML as:
-        // "data":[{"name":"2","pictures":33,...},{"name":"1.0","pictures":30,...}]
-        const match = html.match(/"data"\s*:\s*(\[\s*\{"name"[\s\S]*?\}\s*\])/)
-        if (!match) throw new Error(`Could not find chapter data in HTML for manga ${mangaId}`)
-
-        let chapterData: Array<{ name: string; pictures: number }>
-        try {
-            chapterData = JSON.parse(match[1])
-        } catch {
-            throw new Error('Failed to parse chapter JSON from HTML')
+        const pageCount = this.parser.getPageCount(html, chapterId)
+        if (!pageCount) {
+            throw new Error(`Could not find page count for chapter ${chapterId} in manga ${mangaId}`)
         }
 
-        const chapter = chapterData.find(ch => String(ch.name) === chapterId)
-        if (!chapter) throw new Error(`Chapter ${chapterId} not found in manga ${mangaId}`)
-
-        const pageCount = chapter.pictures
-        if (!pageCount) throw new Error(`Page count is 0 for chapter ${chapterId}`)
-
-        // Build page URLs through proxy
         const pages: string[] = []
         for (let i = 1; i <= pageCount; i++) {
             const imgUrl = `${CDN_URL}/${mangaId}/VI/${chapterId}/${i}.jpg`

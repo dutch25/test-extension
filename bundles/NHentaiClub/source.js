@@ -467,7 +467,7 @@ const BASE_URL = 'https://nhentaiclub.space';
 const CDN_URL = 'https://i1.nhentaiclub.shop';
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.NHentaiClubInfo = {
-    version: '1.1.35',
+    version: '1.1.36',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -573,48 +573,22 @@ class NHentaiClub extends types_1.Source {
         return this.parser.parseMangaDetails($, mangaId);
     }
     async getChapters(mangaId) {
-        const request = App.createRequest({
-            url: `${BASE_URL}/g/${mangaId}`,
-            method: 'GET',
-        });
-        console.log('Fetching chapters for:', mangaId);
-        const response = await this.requestManager.schedule(request, 0);
-        // Log response status
-        console.log('Response status:', response.status);
-        const $ = this.cheerio.load(response.data);
-        // Log HTML length
-        console.log('HTML length:', response.data?.length ?? 0);
-        // Log all chapter links found
-        const chapterLinks = $('a[href^="/read/"]').map((_, el) => $(el).attr('href')).get();
-        console.log('Chapter links found:', chapterLinks);
-        const chapters = this.parser.parseChapters($, mangaId);
-        console.log('Parsed chapters:', chapters.map(c => ({ id: c.id, name: c.name })));
+        const response = await this.requestManager.schedule(App.createRequest({ url: `${BASE_URL}/g/${mangaId}`, method: 'GET' }), 0);
+        const html = response.data;
+        console.log('HTML length:', html.length);
+        // Pass raw HTML string — chapter list is NOT in static HTML, only in embedded JSON
+        const chapters = this.parser.parseChapters(html, mangaId);
+        console.log('Parsed chapters:', chapters.map(c => c.id));
         return chapters;
     }
     async getChapterDetails(mangaId, chapterId) {
         console.log('getChapterDetails:', mangaId, chapterId);
-        // Fetch manga page to get page count from embedded JSON
         const response = await this.requestManager.schedule(App.createRequest({ url: `${BASE_URL}/g/${mangaId}`, method: 'GET' }), 1);
         const html = response.data;
-        // Chapter data is embedded in the HTML as:
-        // "data":[{"name":"2","pictures":33,...},{"name":"1.0","pictures":30,...}]
-        const match = html.match(/"data"\s*:\s*(\[\s*\{"name"[\s\S]*?\}\s*\])/);
-        if (!match)
-            throw new Error(`Could not find chapter data in HTML for manga ${mangaId}`);
-        let chapterData;
-        try {
-            chapterData = JSON.parse(match[1]);
+        const pageCount = this.parser.getPageCount(html, chapterId);
+        if (!pageCount) {
+            throw new Error(`Could not find page count for chapter ${chapterId} in manga ${mangaId}`);
         }
-        catch {
-            throw new Error('Failed to parse chapter JSON from HTML');
-        }
-        const chapter = chapterData.find(ch => String(ch.name) === chapterId);
-        if (!chapter)
-            throw new Error(`Chapter ${chapterId} not found in manga ${mangaId}`);
-        const pageCount = chapter.pictures;
-        if (!pageCount)
-            throw new Error(`Page count is 0 for chapter ${chapterId}`);
-        // Build page URLs through proxy
         const pages = [];
         for (let i = 1; i <= pageCount; i++) {
             const imgUrl = `${CDN_URL}/${mangaId}/VI/${chapterId}/${i}.jpg`;
@@ -645,21 +619,18 @@ class Parser {
     // ─── Home Page ─────────────────────────────────────────────────────────────
     parseHomePage($) {
         const results = [];
-        $('a[href*="/g/"]').each((_, el) => {
+        // href must start with /g/ and id must be numeric
+        $('a[href^="/g/"]').each((_, el) => {
             const href = $(el).attr('href') ?? '';
-            const id = href.split('/g/').pop() ?? '';
-            if (!id)
+            const id = href.replace('/g/', '').replace(/\/$/, '');
+            if (!id || isNaN(Number(id)))
                 return;
             const img = $(el).find('img').first();
-            const title = img.attr('alt')?.trim() || $(el).text().trim() || '';
-            let image = img.attr('src') ?? img.attr('data-src') ?? '';
-            if (!title || title.length < 2)
+            const title = img.attr('alt')?.trim() ?? '';
+            const image = img.attr('src') ?? img.attr('data-src') ?? '';
+            if (!title || title.length < 2 || !image)
                 return;
-            results.push(App.createPartialSourceManga({
-                mangaId: id,
-                title: title,
-                image: image,
-            }));
+            results.push(App.createPartialSourceManga({ mangaId: id, title, image }));
         });
         return this.deduplicate(results);
     }
@@ -669,44 +640,62 @@ class Parser {
             || $('h1').first().text().trim()
             || mangaId;
         const image = $('meta[property="og:image"]').attr('content')?.trim() ?? '';
-        const desc = $('meta[property="og:description"]').attr('content')?.trim()
-            || $('div.description, div.summary').first().text().trim()
-            || '';
+        const desc = $('meta[property="og:description"]').attr('content')?.trim() ?? '';
         return App.createSourceManga({
             id: mangaId,
             mangaInfo: App.createMangaInfo({
                 titles: [title],
-                image: image,
-                desc: desc,
+                image,
+                desc,
                 status: 'Ongoing',
             }),
         });
     }
     // ─── Chapters ─────────────────────────────────────────────────────────────
-    parseChapters($, mangaId) {
-        const chapters = [];
-        $(`a[href*="/read/${mangaId}/"]`).each((_, el) => {
-            const href = $(el).attr('href') ?? '';
-            // Strip query params like ?lang=VI before extracting chapter id
-            const cleanHref = href.split('?')[0];
-            const chapterNum = cleanHref.split('/read/').pop()?.split('/').pop() ?? '';
-            const name = $(el).text().trim() || `Chapter ${chapterNum}`;
-            const num = parseFloat(chapterNum) || 0;
-            if (chapterNum && !isNaN(num)) {
-                chapters.push(App.createChapter({
-                    id: chapterNum,
-                    chapNum: num,
-                    name: name,
-                    time: new Date(),
-                }));
-            }
+    // IMPORTANT: Chapter list is rendered by JS — it is NOT in the static HTML.
+    // The only source of chapter data is the JSON embedded in the raw HTML string:
+    // "data":[{"name":"2","pictures":33,"createdAt":"2026-01-01"},...]
+    // We extract this with regex on the raw HTML, not cheerio.
+    parseChapters(html, mangaId) {
+        // Match the data array — it contains objects with "name" and "pictures"
+        const match = html.match(/"data"\s*:\s*(\[\{"name":"[^"]+","pictures":\d+[^\]]*\])/);
+        if (!match)
+            return [];
+        let chapterData;
+        try {
+            chapterData = JSON.parse(match[1]);
+        }
+        catch {
+            return [];
+        }
+        // JSON is newest-first — reverse for oldest-first display
+        chapterData.reverse();
+        return chapterData.map((ch, i) => {
+            const name = String(ch.name);
+            const chapNum = parseFloat(name) || (i + 1);
+            const date = ch.createdAt ? new Date(ch.createdAt) : new Date();
+            return App.createChapter({
+                id: name,
+                chapNum,
+                name: `Chapter ${name}`,
+                time: isNaN(date.getTime()) ? new Date() : date,
+            });
         });
-        // Deduplicate and sort ascending
-        const seen = new Set();
-        return chapters
-            .filter(c => { if (seen.has(c.id))
-            return false; seen.add(c.id); return true; })
-            .sort((a, b) => a.chapNum - b.chapNum);
+    }
+    // ─── Extract page count for a specific chapter from raw HTML ──────────────
+    getPageCount(html, chapterId) {
+        const match = html.match(/"data"\s*:\s*(\[\{"name":"[^"]+","pictures":\d+[^\]]*\])/);
+        if (!match)
+            return 0;
+        let chapterData;
+        try {
+            chapterData = JSON.parse(match[1]);
+        }
+        catch {
+            return 0;
+        }
+        const chapter = chapterData.find(ch => String(ch.name) === chapterId);
+        return chapter?.pictures ?? 0;
     }
     // ─── Helpers ─────────────────────────────────────────────────────────────
     deduplicate(items) {
