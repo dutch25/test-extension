@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 exports.NHentaiClubInfo = {
-    version: '1.0.2',
+    version: '1.0.4',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -478,7 +478,8 @@ exports.NHentaiClubInfo = {
         { text: '18+', type: types_1.BadgeColor.YELLOW },
     ],
     intents: types_1.SourceIntents.MANGA_CHAPTERS |
-        types_1.SourceIntents.HOMEPAGE_SECTIONS,
+        types_1.SourceIntents.HOMEPAGE_SECTIONS |
+        types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED,
 };
 class NHentaiClub extends types_1.Source {
     constructor() {
@@ -506,7 +507,12 @@ class NHentaiClub extends types_1.Source {
             method: 'GET',
         });
         const response = await this.requestManager.schedule(request, 0);
+        // Log response length for debugging
+        console.log('Response length:', response.data?.length ?? 0);
         const $ = this.cheerio.load(response.data);
+        // Log number of manga found
+        const mangaCount = $('a[href^="/g/"]').length;
+        console.log('Manga count:', mangaCount);
         const manga = this.parser.parseHomePage($);
         sectionCallback(App.createHomeSection({
             id: 'latest',
@@ -585,6 +591,12 @@ class NHentaiClub extends types_1.Source {
     }
     getMangaShareUrl(mangaId) {
         return `${BASE_URL}/g/${mangaId}`;
+    }
+    async getCloudflareBypassRequestAsync() {
+        return App.createRequest({
+            url: BASE_URL,
+            method: 'GET',
+        });
     }
     async getSearchTags() {
         return [];
