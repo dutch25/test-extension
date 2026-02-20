@@ -467,7 +467,7 @@ const BASE_URL = 'https://nhentaiclub.space';
 const CDN_URL = 'https://i1.nhentaiclub.shop';
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.NHentaiClubInfo = {
-    version: '1.1.34',
+    version: '1.1.35',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -593,24 +593,34 @@ class NHentaiClub extends types_1.Source {
     }
     async getChapterDetails(mangaId, chapterId) {
         console.log('getChapterDetails:', mangaId, chapterId);
-        // Step 1: Get page count from worker
-        const countUrl = `${PROXY_URL}/count?comicId=${mangaId}&lang=VI&chapter=${chapterId}`;
-        const countRes = await this.requestManager.schedule(App.createRequest({ url: countUrl, method: 'GET' }), 1);
-        const { count } = JSON.parse(countRes.data);
-        if (!count || count === 0) {
-            throw new Error(`Could not determine page count for chapter ${chapterId}`);
+        // Fetch manga page to get page count from embedded JSON
+        const response = await this.requestManager.schedule(App.createRequest({ url: `${BASE_URL}/g/${mangaId}`, method: 'GET' }), 1);
+        const html = response.data;
+        // Chapter data is embedded in the HTML as:
+        // "data":[{"name":"2","pictures":33,...},{"name":"1.0","pictures":30,...}]
+        const match = html.match(/"data"\s*:\s*(\[\s*\{"name"[\s\S]*?\}\s*\])/);
+        if (!match)
+            throw new Error(`Could not find chapter data in HTML for manga ${mangaId}`);
+        let chapterData;
+        try {
+            chapterData = JSON.parse(match[1]);
         }
-        // Step 2: Build page URLs through proxy
+        catch {
+            throw new Error('Failed to parse chapter JSON from HTML');
+        }
+        const chapter = chapterData.find(ch => String(ch.name) === chapterId);
+        if (!chapter)
+            throw new Error(`Chapter ${chapterId} not found in manga ${mangaId}`);
+        const pageCount = chapter.pictures;
+        if (!pageCount)
+            throw new Error(`Page count is 0 for chapter ${chapterId}`);
+        // Build page URLs through proxy
         const pages = [];
-        for (let i = 1; i <= count; i++) {
+        for (let i = 1; i <= pageCount; i++) {
             const imgUrl = `${CDN_URL}/${mangaId}/VI/${chapterId}/${i}.jpg`;
             pages.push(`${PROXY_URL}?url=${encodeURIComponent(imgUrl)}`);
         }
-        return App.createChapterDetails({
-            id: chapterId,
-            mangaId: mangaId,
-            pages: pages,
-        });
+        return App.createChapterDetails({ id: chapterId, mangaId, pages });
     }
     getMangaShareUrl(mangaId) {
         return `${BASE_URL}/g/${mangaId}`;
@@ -677,7 +687,9 @@ class Parser {
         const chapters = [];
         $(`a[href*="/read/${mangaId}/"]`).each((_, el) => {
             const href = $(el).attr('href') ?? '';
-            const chapterNum = href.split('/read/').pop()?.split('/').pop() ?? '';
+            // Strip query params like ?lang=VI before extracting chapter id
+            const cleanHref = href.split('?')[0];
+            const chapterNum = cleanHref.split('/read/').pop()?.split('/').pop() ?? '';
             const name = $(el).text().trim() || `Chapter ${chapterNum}`;
             const num = parseFloat(chapterNum) || 0;
             if (chapterNum && !isNaN(num)) {
