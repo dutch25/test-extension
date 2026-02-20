@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 exports.NHentaiClubInfo = {
-    version: '1.0.6',
+    version: '1.0.7',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -680,14 +680,18 @@ class Parser {
         const chapters = [];
         $('a[href^="/read/"]').each((_, el) => {
             const href = $(el).attr('href') ?? '';
-            const match = href.match(/\/read\/(\d+)\/(\d+)/);
+            // Extract full chapter identifier (e.g., "oneshot", "1", "2")
+            const match = href.match(/\/read\/\d+\/([^?]+)/);
             if (!match)
                 return;
-            const chapterId = match[2];
+            const chapterId = match[1];
             const chapterTitle = $(el).text().trim() || `Chapter ${chapterId}`;
+            // Try to parse as number for sorting
+            const numMatch = chapterId.match(/(\d+)/);
+            const chapNum = numMatch ? parseFloat(numMatch[1]) : 0;
             chapters.push(App.createChapter({
                 id: chapterId,
-                chapNum: parseFloat(chapterId),
+                chapNum: chapNum,
                 name: chapterTitle,
             }));
         });
