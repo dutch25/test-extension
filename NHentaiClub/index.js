@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 exports.NHentaiClubInfo = {
-    version: '1.0.5',
+    version: '1.0.6',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -507,8 +507,17 @@ class NHentaiClub extends types_1.Source {
             method: 'GET',
         });
         const response = await this.requestManager.schedule(request, 0);
+        // Debug: log response info
+        console.log('Status:', response.status);
+        console.log('Data length:', response.data?.length ?? 0);
+        // Check for Cloudflare block
+        if (response.status === 403 || response.status === 503) {
+            throw new Error('CLOUDFLARE BYPASS ERROR: Please visit the homepage first');
+        }
         const $ = this.cheerio.load(response.data);
         const manga = this.parser.parseHomePage($);
+        // Debug: log manga count
+        console.log('Manga found:', manga.length);
         sectionCallback(App.createHomeSection({
             id: 'latest',
             title: 'Mới Cập Nhật',
