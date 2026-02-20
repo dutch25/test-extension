@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 exports.NHentaiClubInfo = {
-    version: '1.0.1',
+    version: '1.0.2',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -487,6 +487,17 @@ class NHentaiClub extends types_1.Source {
         this.requestManager = App.createRequestManager({
             requestsPerSecond: 3,
             requestTimeout: 30000,
+            interceptor: {
+                interceptRequest: async (request) => {
+                    request.headers = {
+                        ...(request.headers ?? {}),
+                        'referer': BASE_URL,
+                        'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+                    };
+                    return request;
+                },
+                interceptResponse: async (response) => response,
+            }
         });
     }
     async getHomePageSections(sectionCallback) {
