@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 exports.NHentaiClubInfo = {
-    version: '1.0.4',
+    version: '1.0.5',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -493,7 +493,7 @@ class NHentaiClub extends types_1.Source {
                     request.headers = {
                         ...(request.headers ?? {}),
                         'referer': BASE_URL,
-                        'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+                        'user-agent': await this.requestManager.getDefaultUserAgent(),
                     };
                     return request;
                 },
@@ -507,12 +507,7 @@ class NHentaiClub extends types_1.Source {
             method: 'GET',
         });
         const response = await this.requestManager.schedule(request, 0);
-        // Log response length for debugging
-        console.log('Response length:', response.data?.length ?? 0);
         const $ = this.cheerio.load(response.data);
-        // Log number of manga found
-        const mangaCount = $('a[href^="/g/"]').length;
-        console.log('Manga count:', mangaCount);
         const manga = this.parser.parseHomePage($);
         sectionCallback(App.createHomeSection({
             id: 'latest',
