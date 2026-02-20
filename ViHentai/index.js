@@ -464,8 +464,9 @@ exports.ViHentai = exports.ViHentaiInfo = void 0;
 const types_1 = require("@paperback/types");
 const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
+const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.ViHentaiInfo = {
-    version: '1.1.28',
+    version: '1.1.29',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -602,7 +603,8 @@ class ViHentai extends types_1.Source {
                 if (seriesId) {
                     const constructedPages = [];
                     for (let i = 1; i <= 50; i++) {
-                        constructedPages.push(`https://img.shousetsu.dev/images/data/${seriesId}/${extractedChapterId}/${i}.jpg`);
+                        const imageUrl = `https://img.shousetsu.dev/images/data/${seriesId}/${extractedChapterId}/${i}.jpg`;
+                        constructedPages.push(`${PROXY_URL}?url=${encodeURIComponent(imageUrl)}`);
                     }
                     return App.createChapterDetails({ id: chapterId, mangaId, pages: constructedPages });
                 }
@@ -619,7 +621,7 @@ class ViHentai extends types_1.Source {
         }
     }
     getTestPages() {
-        return [
+        const testImages = [
             'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/1.jpg',
             'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/2.jpg',
             'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/3.jpg',
@@ -636,6 +638,7 @@ class ViHentai extends types_1.Source {
             'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/14.jpg',
             'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/15.jpg',
         ];
+        return testImages.map(img => `${PROXY_URL}?url=${encodeURIComponent(img)}`);
     }
     async getHomePageSections(sectionCallback) {
         const sections = [
@@ -720,7 +723,14 @@ exports.ViHentai = ViHentai;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Parser = void 0;
+const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 class Parser {
+    applyProxy(url) {
+        if (url && (url.includes('shousetsu.dev') || url.includes('vi-hentai.pro'))) {
+            return `${PROXY_URL}?url=${encodeURIComponent(url)}`;
+        }
+        return url;
+    }
     // ─── Time helpers ─────────────────────────────────────────────────────────
     convertTime(timeStr) {
         const parsed = new Date(timeStr);
@@ -865,6 +875,7 @@ class Parser {
                 image = match[1];
             if (image.startsWith('//'))
                 image = 'https:' + image;
+            image = this.applyProxy(image);
             const subtitleEl = $('.latest-chapter a', el).first();
             const subtitle = subtitleEl.text().trim();
             results.push(App.createPartialSourceManga({
