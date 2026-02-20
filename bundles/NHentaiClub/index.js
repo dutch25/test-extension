@@ -597,11 +597,11 @@ class Parser {
             const id = href.split('/g/').pop() ?? '';
             if (!id)
                 return;
-            const title = $(el).find('span, div').text().trim() || '';
+            const img = $(el).find('img').first();
+            const title = img.attr('alt')?.trim() || '';
+            const image = img.attr('src') ?? '';
             if (!title || title.length < 2)
                 return;
-            const img = $(el).find('img').first();
-            const image = img.attr('src') ?? '';
             results.push(App.createPartialSourceManga({
                 mangaId: id,
                 title: title,

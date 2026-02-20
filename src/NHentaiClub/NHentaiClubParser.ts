@@ -21,11 +21,11 @@ export class Parser {
 
             if (!id) return
 
-            const title = $(el).find('span, div').text().trim() || ''
-            if (!title || title.length < 2) return
-
             const img = $(el).find('img').first()
+            const title = img.attr('alt')?.trim() || ''
             const image = img.attr('src') ?? ''
+
+            if (!title || title.length < 2) return
 
             results.push(App.createPartialSourceManga({
                 mangaId: id,
