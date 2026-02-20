@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 exports.NHentaiClubInfo = {
-    version: '1.1.0',
+    version: '1.1.1',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -626,9 +626,8 @@ exports.Parser = void 0;
 class Parser {
     constructor() {
         this.IMAGE_BASE_URL = 'https://i1.nhentaiclub.shop';
-        // Cloudflare Worker proxy URL - replace with your own worker URL
-        // Create at: https://workers.cloudflare.com
-        this.PROXY_URL = ''; // e.g., 'https://your-worker.workers.dev'
+        // Cloudflare Worker proxy URL
+        this.PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
     }
     // ─── Home Page ─────────────────────────────────────────────────────────────
     parseHomePage($) {

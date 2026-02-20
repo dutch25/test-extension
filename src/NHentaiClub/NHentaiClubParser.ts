@@ -10,9 +10,8 @@ import { CheerioAPI } from 'cheerio'
 
 export class Parser {
     private readonly IMAGE_BASE_URL = 'https://i1.nhentaiclub.shop'
-    // Cloudflare Worker proxy URL - replace with your own worker URL
-    // Create at: https://workers.cloudflare.com
-    private readonly PROXY_URL = '' // e.g., 'https://your-worker.workers.dev'
+    // Cloudflare Worker proxy URL
+    private readonly PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev'
 
     // ─── Home Page ─────────────────────────────────────────────────────────────
     parseHomePage($: CheerioAPI): PartialSourceManga[] {
