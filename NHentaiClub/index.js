@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 exports.NHentaiClubInfo = {
-    version: '1.0.9',
+    version: '1.1.0',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -626,6 +626,9 @@ exports.Parser = void 0;
 class Parser {
     constructor() {
         this.IMAGE_BASE_URL = 'https://i1.nhentaiclub.shop';
+        // Cloudflare Worker proxy URL - replace with your own worker URL
+        // Create at: https://workers.cloudflare.com
+        this.PROXY_URL = ''; // e.g., 'https://your-worker.workers.dev'
     }
     // ─── Home Page ─────────────────────────────────────────────────────────────
     parseHomePage($) {
@@ -637,9 +640,13 @@ class Parser {
                 return;
             const img = $(el).find('img').first();
             const title = img.attr('alt')?.trim() || '';
-            const image = img.attr('src') ?? '';
+            let image = img.attr('src') ?? '';
             if (!title || title.length < 2)
                 return;
+            // Use proxy for images if configured
+            if (this.PROXY_URL && image) {
+                image = `${this.PROXY_URL}?url=${encodeURIComponent(image)}`;
+            }
             results.push(App.createPartialSourceManga({
                 mangaId: id,
                 title: title,
@@ -731,7 +738,12 @@ class Parser {
         }
         if (pages.length === 0) {
             for (let i = 1; i <= 20; i++) {
-                pages.push(`${this.IMAGE_BASE_URL}/${mangaId}/VI/${chapterId}/${i}.jpg`);
+                let imageUrl = `${this.IMAGE_BASE_URL}/${mangaId}/VI/${chapterId}/${i}.jpg`;
+                // Use proxy if configured
+                if (this.PROXY_URL) {
+                    imageUrl = `${this.PROXY_URL}?url=${encodeURIComponent(imageUrl)}`;
+                }
+                pages.push(imageUrl);
             }
         }
         return pages;
