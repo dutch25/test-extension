@@ -9,9 +9,8 @@ import {
 import { CheerioAPI } from 'cheerio'
 
 export class Parser {
-    private readonly IMAGE_BASE_URL = 'https://i1.nhentaiclub.shop'
-    // Cloudflare Worker proxy URL
-    private readonly PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev'
+    // Use i3 subdomain which is what the site actually uses
+    private readonly IMAGE_BASE_URL = 'https://i3.nhentaiclub.shop'
 
     // ─── Home Page ─────────────────────────────────────────────────────────────
     parseHomePage($: CheerioAPI): PartialSourceManga[] {
@@ -29,10 +28,7 @@ export class Parser {
 
             if (!title || title.length < 2) return
 
-            // Use proxy for images if configured
-            if (this.PROXY_URL && image) {
-                image = `${this.PROXY_URL}?url=${encodeURIComponent(image)}`
-            }
+            // Use direct image URL - rely on Paperback's cloudflare bypass
 
             results.push(App.createPartialSourceManga({
                 mangaId: id,
@@ -144,10 +140,7 @@ export class Parser {
             for (let i = 1; i <= 20; i++) {
                 let imageUrl = `${this.IMAGE_BASE_URL}/${mangaId}/VI/${chapterId}/${i}.jpg`
                 
-                // Use proxy if configured
-                if (this.PROXY_URL) {
-                    imageUrl = `${this.PROXY_URL}?url=${encodeURIComponent(imageUrl)}`
-                }
+            // Use direct URL - rely on Paperback's cloudflare bypass
                 
                 pages.push(imageUrl)
             }
