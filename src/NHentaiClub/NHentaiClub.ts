@@ -19,7 +19,7 @@ import { Parser } from './NHentaiClubParser'
 const BASE_URL = 'https://nhentaiclub.space'
 
 export const NHentaiClubInfo: SourceInfo = {
-    version: '1.1.30',
+    version: '1.1.31',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',

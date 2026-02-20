@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 exports.NHentaiClubInfo = {
-    version: '1.1.30',
+    version: '1.1.31',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -723,9 +723,9 @@ class Parser {
                 const isImage = pageUrl.includes('.jpg') || pageUrl.includes('.png') || pageUrl.includes('.webp') || pageUrl.includes('.jpeg');
                 const isNotThumbnail = !pageUrl.includes('thumbnail') && !pageUrl.includes('icon') && !pageUrl.includes('logo') && !pageUrl.includes('loading') && !pageUrl.includes('svg');
                 if (isImage && isNotThumbnail && pageUrl.startsWith('http')) {
-                    // Try using allorigins proxy as fallback for CDN images
+                    // Use worker proxy for CDN images
                     if (pageUrl.includes('nhentaiclub.shop')) {
-                        pages.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(pageUrl)}`);
+                        pages.push(`https://nhentai-club-proxy.feedandafk2018.workers.dev?url=${encodeURIComponent(pageUrl)}`);
                     }
                     else {
                         pages.push(pageUrl);
@@ -733,11 +733,11 @@ class Parser {
                 }
             }
         });
-        // Fallback: construct URLs with proxy
+        // Fallback: construct URLs with worker proxy
         if (pages.length === 0) {
             for (let i = 1; i <= 30; i++) {
                 const imageUrl = `https://i3.nhentaiclub.shop/${mangaId}/VI/${chapterId}/${i}.jpg`;
-                pages.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`);
+                pages.push(`https://nhentai-club-proxy.feedandafk2018.workers.dev?url=${encodeURIComponent(imageUrl)}`);
             }
         }
         return pages;
