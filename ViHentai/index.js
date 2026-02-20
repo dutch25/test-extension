@@ -466,7 +466,7 @@ const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.ViHentaiInfo = {
-    version: '1.1.29',
+    version: '1.1.30',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -609,36 +609,11 @@ class ViHentai extends types_1.Source {
                     return App.createChapterDetails({ id: chapterId, mangaId, pages: constructedPages });
                 }
             }
-            throw new Error('No images in HTML');
+            throw new Error('No images found in chapter - Cloudflare may be blocking');
         }
         catch (error) {
-            // Fallback - this will show same test images for all chapters
-            return App.createChapterDetails({
-                id: chapterId,
-                mangaId,
-                pages: this.getTestPages()
-            });
+            throw new Error(`Failed to get chapter images: ${error.message}`);
         }
-    }
-    getTestPages() {
-        const testImages = [
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/1.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/2.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/3.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/4.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/5.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/6.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/7.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/8.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/9.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/10.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/11.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/12.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/13.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/14.jpg',
-            'https://img.shousetsu.dev/images/data/3761d3c1-9696-48ed-832d-46f4b64d9fc4/1b7fe50f-0175-4168-93ac-e5dd77dbf932/15.jpg',
-        ];
-        return testImages.map(img => `${PROXY_URL}?url=${encodeURIComponent(img)}`);
     }
     async getHomePageSections(sectionCallback) {
         const sections = [
