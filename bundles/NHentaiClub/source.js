@@ -464,8 +464,10 @@ exports.NHentaiClub = exports.NHentaiClubInfo = void 0;
 const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
+const CDN_URL = 'https://i1.nhentaiclub.shop';
+const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.NHentaiClubInfo = {
-    version: '1.1.31',
+    version: '1.1.32',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -563,7 +565,7 @@ class NHentaiClub extends types_1.Source {
     }
     async getMangaDetails(mangaId) {
         const request = App.createRequest({
-            url: `${BASE_URL}/g/${mangaId}`,
+            url: `${BASE_URL}/comic/${mangaId}`,
             method: 'GET',
         });
         const response = await this.requestManager.schedule(request, 0);
@@ -572,7 +574,7 @@ class NHentaiClub extends types_1.Source {
     }
     async getChapters(mangaId) {
         const request = App.createRequest({
-            url: `${BASE_URL}/g/${mangaId}`,
+            url: `${BASE_URL}/comic/${mangaId}`,
             method: 'GET',
         });
         console.log('Fetching chapters for:', mangaId);
@@ -591,13 +593,19 @@ class NHentaiClub extends types_1.Source {
     }
     async getChapterDetails(mangaId, chapterId) {
         console.log('getChapterDetails:', mangaId, chapterId);
-        const request = App.createRequest({
-            url: `${BASE_URL}/read/${mangaId}/${chapterId}?lang=VI`,
-            method: 'GET',
-        });
-        const response = await this.requestManager.schedule(request, 0);
-        const $ = this.cheerio.load(response.data);
-        const pages = this.parser.parseChapterPages($, mangaId, chapterId);
+        // Step 1: Get page count from worker
+        const countUrl = `${PROXY_URL}/count?comicId=${mangaId}&lang=VI&chapter=${chapterId}`;
+        const countRes = await this.requestManager.schedule(App.createRequest({ url: countUrl, method: 'GET' }), 1);
+        const { count } = JSON.parse(countRes.data);
+        if (!count || count === 0) {
+            throw new Error(`Could not determine page count for chapter ${chapterId}`);
+        }
+        // Step 2: Build page URLs through proxy
+        const pages = [];
+        for (let i = 1; i <= count; i++) {
+            const imgUrl = `${CDN_URL}/${mangaId}/VI/${chapterId}/${i}.jpg`;
+            pages.push(`${PROXY_URL}?url=${encodeURIComponent(imgUrl)}`);
+        }
         return App.createChapterDetails({
             id: chapterId,
             mangaId: mangaId,
