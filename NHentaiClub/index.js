@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 exports.NHentaiClubInfo = {
-    version: '1.1.29',
+    version: '1.1.30',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -710,32 +710,34 @@ class Parser {
     // ─── Chapter Pages ─────────────────────────────────────────────────────────
     parseChapterPages($, mangaId, chapterId) {
         const pages = [];
-        $('img[src*="nhentaiclub"]').each((_, el) => {
+        // Try to find images directly from HTML - these have working Cloudflare cookies
+        $('img').each((_, el) => {
             const src = $(el).attr('src') ?? '';
             const dataSrc = $(el).attr('data-src') ?? '';
-            const pageUrl = dataSrc || src;
-            if (pageUrl && pageUrl.includes('.jpg') || pageUrl.includes('.png') || pageUrl.includes('.webp')) {
-                pages.push(pageUrl);
-            }
-        });
-        if (pages.length === 0) {
-            const imgElements = $('img');
-            imgElements.each((_, el) => {
-                const src = $(el).attr('src') ?? '';
-                const dataSrc = $(el).attr('data-src') ?? '';
-                const url = dataSrc || src;
-                if (url && (url.includes('.jpg') || url.includes('.png') || url.includes('.webp'))) {
-                    if (!url.includes('thumbnail') && !url.includes('icon') && !url.includes('logo')) {
-                        pages.push(url);
+            const dataLazySrc = $(el).attr('data-lazy-src') ?? '';
+            const dataOriginal = $(el).attr('data-original') ?? '';
+            // Check all possible attributes
+            const pageUrl = dataOriginal || dataLazySrc || dataSrc || src;
+            // Must be a valid image URL
+            if (pageUrl && pageUrl.length > 10) {
+                const isImage = pageUrl.includes('.jpg') || pageUrl.includes('.png') || pageUrl.includes('.webp') || pageUrl.includes('.jpeg');
+                const isNotThumbnail = !pageUrl.includes('thumbnail') && !pageUrl.includes('icon') && !pageUrl.includes('logo') && !pageUrl.includes('loading') && !pageUrl.includes('svg');
+                if (isImage && isNotThumbnail && pageUrl.startsWith('http')) {
+                    // Try using allorigins proxy as fallback for CDN images
+                    if (pageUrl.includes('nhentaiclub.shop')) {
+                        pages.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(pageUrl)}`);
+                    }
+                    else {
+                        pages.push(pageUrl);
                     }
                 }
-            });
-        }
+            }
+        });
+        // Fallback: construct URLs with proxy
         if (pages.length === 0) {
-            for (let i = 1; i <= 20; i++) {
-                let imageUrl = `${this.IMAGE_BASE_URL}/${mangaId}/VI/${chapterId}/${i}.jpg`;
-                // Use direct URL - rely on Paperback's cloudflare bypass
-                pages.push(imageUrl);
+            for (let i = 1; i <= 30; i++) {
+                const imageUrl = `https://i3.nhentaiclub.shop/${mangaId}/VI/${chapterId}/${i}.jpg`;
+                pages.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`);
             }
         }
         return pages;
