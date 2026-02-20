@@ -465,7 +465,7 @@ const types_1 = require("@paperback/types");
 const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 exports.NHentaiClubInfo = {
-    version: '1.1.1',
+    version: '1.1.29',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
