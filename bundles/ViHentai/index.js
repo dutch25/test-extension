@@ -466,7 +466,7 @@ const ViHentaiParser_1 = require("./ViHentaiParser");
 const BASE_URL = 'https://vi-hentai.pro';
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.ViHentaiInfo = {
-    version: '1.1.30',
+    version: '1.1.31',
     name: 'Vi-Hentai',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -567,53 +567,53 @@ class ViHentai extends types_1.Source {
     }
     async getChapterDetails(mangaId, chapterId) {
         const chapterUrl = `${BASE_URL}/truyen/${mangaId}/${chapterId}`;
-        // First try: Extract images directly from chapter HTML
-        try {
-            const response = await this.requestManager.schedule(this.buildRequest(chapterUrl), 1);
-            if (response.status !== 200) {
-                throw new Error(`HTTP ${response.status}`);
+        const response = await this.requestManager.schedule(this.buildRequest(chapterUrl), 1);
+        this.CloudFlareError(response.status);
+        const html = response.data;
+        const $ = this.cheerio.load(html);
+        // Both UUIDs change per chapter and are embedded in every image URL.
+        // Pattern: /images/data/{uuid1}/{uuid2}/{N}.jpg
+        // We just grab them from the first image we find (src or data-src).
+        let uuid1 = '';
+        let uuid2 = '';
+        $('img.lazy-image, img[data-src*="shousetsu"], img[src*="shousetsu"]').each((_, el) => {
+            if (uuid1)
+                return; // already found, stop
+            const src = $(el).attr('data-src') ?? $(el).attr('src') ?? '';
+            const match = src.match(/\/images\/data\/([a-f0-9-]{36})\/([a-f0-9-]{36})\/\d+\.jpg/);
+            if (match) {
+                uuid1 = match[1];
+                uuid2 = match[2];
             }
-            const html = response.data;
-            const $ = this.cheerio.load(html);
-            const pages = [];
-            $('img.lazy-image').each((_, el) => {
-                let src = $(el).attr('data-src') ?? $(el).attr('src') ?? '';
-                src = src.trim();
-                if (!src)
-                    return;
-                if (src.startsWith('//'))
-                    src = 'https:' + src;
-                if (src.includes('shousetsu.dev') && !pages.includes(src)) {
-                    pages.push(src);
-                }
-            });
-            if (pages.length >= 3) {
-                return App.createChapterDetails({ id: chapterId, mangaId, pages });
-            }
-            // Try extracting UUIDs and constructing URLs
-            const chapterIdMatch = html.match(/chapter_id\s*=\s*['"]([a-f0-9-]+)['"]/);
-            const extractedChapterId = chapterIdMatch?.[1];
-            if (extractedChapterId) {
-                // Fetch manga page to get series_id
-                const mangaUrl = `${BASE_URL}/truyen/${mangaId}`;
-                const mangaRes = await this.requestManager.schedule(this.buildRequest(mangaUrl), 1);
-                const mangaHtml = mangaRes.data;
-                const seriesIdMatch = mangaHtml.match(/series_id["\s:]+["']?([a-f0-9-]+)["']?/i);
-                const seriesId = seriesIdMatch?.[1];
-                if (seriesId) {
-                    const constructedPages = [];
-                    for (let i = 1; i <= 50; i++) {
-                        const imageUrl = `https://img.shousetsu.dev/images/data/${seriesId}/${extractedChapterId}/${i}.jpg`;
-                        constructedPages.push(`${PROXY_URL}?url=${encodeURIComponent(imageUrl)}`);
-                    }
-                    return App.createChapterDetails({ id: chapterId, mangaId, pages: constructedPages });
-                }
-            }
-            throw new Error('No images found in chapter - Cloudflare may be blocking');
+        });
+        // DEBUG: show what we found — remove this throw once working
+        if (!uuid1 || !uuid2) {
+            throw new Error(`Could not find image UUIDs. ` +
+                `HTML length: ${html.length} | ` +
+                `Has shousetsu: ${html.includes('shousetsu.dev')} | ` +
+                `First 300: ${html.substring(0, 300)}`);
         }
-        catch (error) {
-            throw new Error(`Failed to get chapter images: ${error.message}`);
+        // Count pages from data-index on image containers (0-based)
+        let maxIndex = 0;
+        $('div.image-container[data-index]').each((_, el) => {
+            const idx = parseInt($(el).attr('data-index') ?? '0', 10);
+            if (idx > maxIndex)
+                maxIndex = idx;
+        });
+        // Fallback: count img elements directly
+        const totalPages = maxIndex > 0
+            ? maxIndex + 1
+            : $('img.lazy-image, img[data-src*="shousetsu"], img[src*="shousetsu"]').length;
+        if (totalPages === 0) {
+            throw new Error(`Found UUIDs but could not count pages. HTML length: ${html.length}`);
         }
+        // Build all page URLs through proxy
+        const pages = [];
+        for (let i = 1; i <= totalPages; i++) {
+            const imageUrl = `https://img.shousetsu.dev/images/data/${uuid1}/${uuid2}/${i}.jpg`;
+            pages.push(`${PROXY_URL}?url=${encodeURIComponent(imageUrl)}`);
+        }
+        return App.createChapterDetails({ id: chapterId, mangaId, pages });
     }
     async getHomePageSections(sectionCallback) {
         const sections = [
