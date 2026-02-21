@@ -20,7 +20,7 @@ const BASE_URL = 'https://nhentaiclub.space'
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev'
 
 export const NHentaiClubInfo: SourceInfo = {
-    version: '1.1.49',
+    version: '1.1.50',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -67,21 +67,8 @@ export class NHentaiClub extends Source {
             { id: 'latest', title: 'Mới Cập Nhật', url: `${BASE_URL}/` },
             { id: 'all-time', title: 'Xếp Hạng Tất Cả', url: `${BASE_URL}/ranking/all-time` },
             { id: 'day', title: 'Xếp Hạng Ngày', url: `${BASE_URL}/ranking/day` },
+            { id: 'week', title: 'Xếp Hạng Tuần', url: `${BASE_URL}/ranking/week` },
             { id: 'month', title: 'Xếp Hạng Tháng', url: `${BASE_URL}/ranking/month` },
-            // Genre sections - users can tap to see manga by genre
-            { id: 'ahegao', title: 'Ahegao', url: `${BASE_URL}/genre/ahegao` },
-            { id: 'anal', title: 'Anal', url: `${BASE_URL}/genre/anal` },
-            { id: 'big-boobs', title: 'Big Boobs', url: `${BASE_URL}/genre/big-boobs` },
-            { id: 'blowjobs', title: 'Blowjobs', url: `${BASE_URL}/genre/blowjobs` },
-            { id: 'cosplay', title: 'Cosplay', url: `${BASE_URL}/genre/cosplay` },
-            { id: 'doujinshi', title: 'Doujinshi', url: `${BASE_URL}/genre/doujinshi` },
-            { id: 'fantasy', title: 'Fantasy', url: `${BASE_URL}/genre/fantasy` },
-            { id: 'futanari', title: 'Futanari', url: `${BASE_URL}/genre/futanari` },
-            { id: 'harem', title: 'Harem', url: `${BASE_URL}/genre/harem` },
-            { id: 'incest', title: 'Incest', url: `${BASE_URL}/genre/incest` },
-            { id: 'milf', title: 'MILF', url: `${BASE_URL}/genre/milf` },
-            { id: 'ntr', title: 'NTR', url: `${BASE_URL}/genre/netorare` },
-            { id: 'yuri', title: 'Yuri', url: `${BASE_URL}/genre/yuri` },
         ]
 
         for (const section of sections) {
@@ -123,6 +110,7 @@ export class NHentaiClub extends Source {
             'latest': `${BASE_URL}/?page=${page}`,
             'all-time': `${BASE_URL}/ranking/all-time?page=${page}`,
             'day': `${BASE_URL}/ranking/day?page=${page}`,
+            'week': `${BASE_URL}/ranking/week?page=${page}`,
             'month': `${BASE_URL}/ranking/month?page=${page}`,
         }
 
