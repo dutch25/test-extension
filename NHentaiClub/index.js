@@ -466,7 +466,7 @@ const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.NHentaiClubInfo = {
-    version: '1.1.43',
+    version: '1.1.44',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -646,7 +646,9 @@ class Parser {
             mangaInfo: App.createMangaInfo({ titles: [title], image, desc, status: 'Ongoing' }),
         });
     }
-    // ─── Extract CDN base from og:image ───────────────────────────────────────
+    // ─── CDN base from og:image ────────────────────────────────────────────────
+    // e.g. og:image = https://i3.nhentaiclub.shop/7054059/thumbnail.jpg
+    //      returns   https://i3.nhentaiclub.shop
     getCdnBase($) {
         const ogImage = $('meta[property="og:image"]').attr('content')?.trim() ?? '';
         if (!ogImage)
@@ -659,11 +661,14 @@ class Parser {
         }
     }
     // ─── Chapters ─────────────────────────────────────────────────────────────
+    // Takes RAW HTML STRING — chapter list is JS-rendered.
+    // Data lives in embedded Next.js JSON with escaped quotes:
+    // \"data\":[{\"name\":\"2\",\"pictures\":25,\"createdAt\":\"2026-01-01\"},...]
     parseChapters(html) {
         const chapterData = this.extractDataArray(html);
         if (!chapterData || chapterData.length === 0)
             return [];
-        chapterData.reverse();
+        chapterData.reverse(); // newest-first → oldest-first
         return chapterData.map((ch, i) => {
             const name = String(ch.name);
             const chapNum = parseFloat(name) || (i + 1);
@@ -675,116 +680,54 @@ class Parser {
             });
         });
     }
-    // ─── Page count for a chapter ─────────────────────────────────────────────
+    // ─── Page count ───────────────────────────────────────────────────────────
     getPageCount(html, chapterId) {
         const chapterData = this.extractDataArray(html);
         if (!chapterData)
             return 0;
         return chapterData.find(ch => String(ch.name) === chapterId)?.pictures ?? 0;
     }
-    // ─── Search Tags (genres) ─────────────────────────────────────────────────
+    // ─── Search Tags ──────────────────────────────────────────────────────────
     getSearchTags() {
         const genres = [
-            { id: 'ahegao', label: 'Ahegao' },
-            { id: 'anal', label: 'Anal' },
-            { id: 'angel', label: 'Angel' },
-            { id: 'animal', label: 'Animal' },
-            { id: 'bdsm', label: 'BDSM' },
-            { id: 'big-ass', label: 'Big Ass' },
-            { id: 'big-boobs', label: 'Big Boobs' },
-            { id: 'big-penis', label: 'Big Penis' },
-            { id: 'bikini', label: 'Bikini' },
-            { id: 'black-mail', label: 'Blackmail' },
-            { id: 'blowjobs', label: 'Blowjobs' },
-            { id: 'body-swap', label: 'Body Swap' },
-            { id: 'breast-sucking', label: 'Breast Sucking' },
-            { id: 'bunny-girl', label: 'Bunny Girl' },
-            { id: 'catgirl', label: 'Catgirl' },
-            { id: 'cheating', label: 'Cheating' },
-            { id: 'chikan', label: 'Chikan' },
-            { id: 'collar', label: 'Collar' },
-            { id: 'condom', label: 'Condom' },
-            { id: 'cosplay', label: 'Cosplay' },
-            { id: 'dark-skin', label: 'Dark Skin' },
-            { id: 'daughter', label: 'Daughter' },
-            { id: 'deep-throat', label: 'Deepthroat' },
-            { id: 'defloration', label: 'Defloration' },
-            { id: 'demon-girl', label: 'Demon Girl' },
-            { id: 'double-penetration', label: 'Double Penetration' },
-            { id: 'doujinshi', label: 'Doujinshi' },
-            { id: 'drugs', label: 'Drugs' },
-            { id: 'drunk', label: 'Drunk' },
-            { id: 'elf', label: 'Elf' },
-            { id: 'exhibitionism', label: 'Exhibitionism' },
-            { id: 'father', label: 'Father' },
-            { id: 'femdom', label: 'Femdom' },
-            { id: 'fingering', label: 'Fingering' },
-            { id: 'footjob', label: 'Footjob' },
-            { id: 'fox-girl', label: 'Fox Girl' },
-            { id: 'full-color', label: 'Full Color' },
-            { id: 'futanari', label: 'Futanari' },
-            { id: 'glasses', label: 'Glasses' },
-            { id: 'group', label: 'Group' },
-            { id: 'hairy', label: 'Hairy' },
-            { id: 'handjob', label: 'Handjob' },
-            { id: 'harem', label: 'Harem' },
-            { id: 'humiliation', label: 'Humiliation' },
-            { id: 'impregnation', label: 'Impregnation' },
-            { id: 'incest', label: 'Incest' },
-            { id: 'kimono', label: 'Kimono' },
-            { id: 'kissing', label: 'Kissing' },
-            { id: 'lactation', label: 'Lactation' },
-            { id: 'maid', label: 'Maid' },
-            { id: 'manhwa', label: 'Manhwa' },
-            { id: 'masturbation', label: 'Masturbation' },
-            { id: 'milf', label: 'Milf' },
-            { id: 'mind-break', label: 'Mind Break' },
-            { id: 'mind-control', label: 'Mind Control' },
-            { id: 'monster', label: 'Monster' },
-            { id: 'monster-girl', label: 'Monster Girl' },
-            { id: 'mother', label: 'Mother' },
-            { id: 'muscle', label: 'Muscle' },
-            { id: 'nakadashi', label: 'Nakadashi' },
-            { id: 'netorare', label: 'NTR (Netorare)' },
-            { id: 'netori', label: 'Netori' },
-            { id: 'nurse', label: 'Nurse' },
-            { id: 'old-man', label: 'Old Man' },
-            { id: 'oneshot', label: 'Oneshot' },
-            { id: 'orc', label: 'Orc' },
-            { id: 'paizuri', label: 'Paizuri' },
-            { id: 'pantyhose', label: 'Pantyhose' },
-            { id: 'pregnant', label: 'Pregnant' },
-            { id: 'rape', label: 'Rape' },
-            { id: 'rimjob', label: 'Rimjob' },
-            { id: 'school-girl-uniform', label: 'Schoolgirl Uniform' },
-            { id: 'series', label: 'Series' },
-            { id: 'sex-toys', label: 'Sex Toys' },
-            { id: 'sister', label: 'Sister' },
-            { id: 'slave', label: 'Slave' },
-            { id: 'sleeping', label: 'Sleeping' },
-            { id: 'small-boobs', label: 'Small Boobs' },
-            { id: 'shotacon', label: 'Shotacon' },
-            { id: 'stockings', label: 'Stockings' },
-            { id: 'swimsuit', label: 'Swimsuit' },
-            { id: 'teacher', label: 'Teacher' },
-            { id: 'tentacles', label: 'Tentacles' },
-            { id: 'three-some', label: 'Threesome' },
-            { id: 'time-stop', label: 'Time Stop' },
-            { id: 'tomboy', label: 'Tomboy' },
-            { id: 'twins', label: 'Twins' },
-            { id: 'twintails', label: 'Twintails' },
-            { id: 'vampire', label: 'Vampire' },
-            { id: 'virgin', label: 'Virgin' },
-            { id: 'x-ray', label: 'X-ray' },
-            { id: 'yaoi', label: 'Yaoi' },
-            { id: 'yuri', label: 'Yuri' },
-            { id: '3d', label: '3D' },
-        ].map(g => App.createTag({ id: g.id, label: g.label }));
-        return [
-            App.createTagSection({ id: 'genre', label: 'Thể Loại', tags: genres }),
+            ['ahegao', 'Ahegao'], ['anal', 'Anal'], ['bdsm', 'BDSM'],
+            ['big-ass', 'Big Ass'], ['big-boobs', 'Big Boobs'], ['big-penis', 'Big Penis'],
+            ['bikini', 'Bikini'], ['black-mail', 'Blackmail'], ['blowjobs', 'Blowjobs'],
+            ['body-swap', 'Body Swap'], ['breast-sucking', 'Breast Sucking'], ['bunny-girl', 'Bunny Girl'],
+            ['catgirl', 'Catgirl'], ['cheating', 'Cheating'], ['chikan', 'Chikan'],
+            ['collar', 'Collar'], ['condom', 'Condom'], ['cosplay', 'Cosplay'],
+            ['dark-skin', 'Dark Skin'], ['daughter', 'Daughter'], ['deep-throat', 'Deepthroat'],
+            ['defloration', 'Defloration'], ['demon-girl', 'Demon Girl'], ['double-penetration', 'Double Penetration'],
+            ['doujinshi', 'Doujinshi'], ['drugs', 'Drugs'], ['drunk', 'Drunk'],
+            ['elf', 'Elf'], ['exhibitionism', 'Exhibitionism'], ['father', 'Father'],
+            ['femdom', 'Femdom'], ['fingering', 'Fingering'], ['footjob', 'Footjob'],
+            ['fox-girl', 'Fox Girl'], ['full-color', 'Full Color'], ['futanari', 'Futanari'],
+            ['glasses', 'Glasses'], ['group', 'Group'], ['hairy', 'Hairy'],
+            ['handjob', 'Handjob'], ['harem', 'Harem'], ['humiliation', 'Humiliation'],
+            ['impregnation', 'Impregnation'], ['incest', 'Incest'], ['kimono', 'Kimono'],
+            ['kissing', 'Kissing'], ['lactation', 'Lactation'], ['maid', 'Maid'],
+            ['manhwa', 'Manhwa'], ['masturbation', 'Masturbation'], ['milf', 'Milf'],
+            ['mind-break', 'Mind Break'], ['mind-control', 'Mind Control'], ['monster', 'Monster'],
+            ['monster-girl', 'Monster Girl'], ['mother', 'Mother'], ['muscle', 'Muscle'],
+            ['nakadashi', 'Nakadashi'], ['netorare', 'NTR (Netorare)'], ['netori', 'Netori'],
+            ['nurse', 'Nurse'], ['old-man', 'Old Man'], ['oneshot', 'Oneshot'],
+            ['orc', 'Orc'], ['paizuri', 'Paizuri'], ['pantyhose', 'Pantyhose'],
+            ['pregnant', 'Pregnant'], ['rape', 'Rape'], ['rimjob', 'Rimjob'],
+            ['school-girl-uniform', 'Schoolgirl Uniform'], ['series', 'Series'], ['sex-toys', 'Sex Toys'],
+            ['sister', 'Sister'], ['slave', 'Slave'], ['sleeping', 'Sleeping'],
+            ['small-boobs', 'Small Boobs'], ['shotacon', 'Shotacon'], ['stockings', 'Stockings'],
+            ['swimsuit', 'Swimsuit'], ['teacher', 'Teacher'], ['tentacles', 'Tentacles'],
+            ['three-some', 'Threesome'], ['time-stop', 'Time Stop'], ['tomboy', 'Tomboy'],
+            ['twins', 'Twins'], ['twintails', 'Twintails'], ['vampire', 'Vampire'],
+            ['virgin', 'Virgin'], ['x-ray', 'X-ray'], ['yaoi', 'Yaoi'],
+            ['yuri', 'Yuri'], ['3d', '3D'],
         ];
+        const tags = genres.map(([id, label]) => App.createTag({ id, label }));
+        return [App.createTagSection({ id: 'genre', label: 'Thể Loại', tags })];
     }
-    // ─── Extract chapter data array from raw HTML ─────────────────────────────
+    // ─── Extract chapter JSON array from raw HTML ─────────────────────────────
+    // Inside Next.js script tags quotes are escaped as \"
+    // Actual bytes: \"data\":[{\"name\":\"2\",\"pictures\":33}]
     extractDataArray(html) {
         const escapedKey = '\\"data\\":[';
         const unescapedKey = '"data":[';
