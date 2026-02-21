@@ -466,7 +466,7 @@ const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.NHentaiClubInfo = {
-    version: '1.1.44',
+    version: '1.1.43',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -558,23 +558,15 @@ class NHentaiClub extends types_1.Source {
         const response = await this.requestManager.schedule(App.createRequest({ url, method: 'GET' }), 0);
         const $ = this.cheerio.load(response.data);
         const manga = this.parser.parseHomePage($, PROXY_URL);
-        return { results: manga, metadata: { page: page + 1 } };
+        return App.createPagedResults({ results: manga, metadata: { page: page + 1 } });
     }
     async getSearchResults(query, metadata) {
         const page = metadata?.page ?? 1;
-        // If a genre tag is selected, browse that genre page
-        const selectedGenre = query.includedTags?.[0]?.id;
-        let url;
-        if (selectedGenre) {
-            url = `${BASE_URL}/genre/${selectedGenre}?page=${page}`;
-        }
-        else {
-            const searchQuery = encodeURIComponent(query.title ?? '');
-            url = `${BASE_URL}/search?keyword=${searchQuery}&page=${page}`;
-        }
+        const searchQuery = encodeURIComponent(query.title ?? '');
+        const url = `${BASE_URL}/search?keyword=${searchQuery}&page=${page}`;
         const response = await this.requestManager.schedule(App.createRequest({ url, method: 'GET' }), 0);
         const $ = this.cheerio.load(response.data);
-        return { results: this.parser.parseHomePage($, PROXY_URL), metadata: { page: page + 1 } };
+        return App.createPagedResults({ results: this.parser.parseHomePage($, PROXY_URL), metadata: { page: page + 1 } });
     }
     async getMangaDetails(mangaId) {
         const response = await this.requestManager.schedule(App.createRequest({ url: `${BASE_URL}/g/${mangaId}`, method: 'GET' }), 0);
@@ -603,9 +595,6 @@ class NHentaiClub extends types_1.Source {
     }
     getMangaShareUrl(mangaId) {
         return `${BASE_URL}/g/${mangaId}`;
-    }
-    async getSearchTags() {
-        return this.parser.getSearchTags();
     }
 }
 exports.NHentaiClub = NHentaiClub;
