@@ -53,7 +53,7 @@ jobs:
                   {"name": "Commit", "value": "'"${{ github.event.head_commit.message }}"'", "inline": true},
                   {"name": "Author", "value": "'"${{ github.actor }}"'", "inline": true}
                 ],
-                "url": "https://dutch25.github.io/test-extension/"
+                "url": "https://dutch25.github.io/VietSource/"
               }]
             }')
           echo "Response: $RESPONSE"
