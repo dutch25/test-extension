@@ -466,7 +466,7 @@ const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.NHentaiClubInfo = {
-    version: '1.1.50',
+    version: '1.1.51',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -641,9 +641,21 @@ class Parser {
         const rawImage = $('meta[property="og:image"]').attr('content')?.trim() ?? '';
         const image = rawImage ? `${proxyUrl}?url=${encodeURIComponent(rawImage)}` : '';
         const desc = $('meta[property="og:description"]').attr('content')?.trim() ?? '';
+        const genres = [];
+        $('.flex.flex-wrap.gap-2 a[href^="/genre/"]').each((_, el) => {
+            const href = $(el).attr('href') ?? '';
+            const genreId = href.replace('/genre/', '').trim();
+            const label = $(el).find('button').text().trim();
+            if (genreId && label) {
+                genres.push(App.createTag({ id: genreId, label }));
+            }
+        });
+        const tagSections = genres.length > 0
+            ? [App.createTagSection({ id: 'genre', label: 'Thể Loại', tags: genres })]
+            : [];
         return App.createSourceManga({
             id: mangaId,
-            mangaInfo: App.createMangaInfo({ titles: [title], image, desc, status: 'Ongoing' }),
+            mangaInfo: App.createMangaInfo({ titles: [title], image, desc, status: 'Ongoing', tags: tagSections }),
         });
     }
     // ─── CDN base from og:image ────────────────────────────────────────────────
