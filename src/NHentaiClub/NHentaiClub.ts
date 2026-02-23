@@ -20,7 +20,7 @@ const BASE_URL = 'https://nhentaiclub.space'
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev'
 
 export const NHentaiClubInfo: SourceInfo = {
-    version: '1.1.54',
+    version: '1.1.55',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',

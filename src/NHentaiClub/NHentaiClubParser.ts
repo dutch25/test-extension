@@ -60,11 +60,11 @@ export class Parser {
         })
 
         const tagSections: TagSection[] = []
-        if (genres.length > 0) {
-            tagSections.push(App.createTagSection({ id: 'genre', label: 'Thể Loại', tags: genres }))
-        }
         if (author) {
             tagSections.push(App.createTagSection({ id: 'author', label: 'Tác Giả', tags: [App.createTag({ id: 'author:' + authorId, label: author })] }))
+        }
+        if (genres.length > 0) {
+            tagSections.push(App.createTagSection({ id: 'genre', label: 'Thể Loại', tags: genres }))
         }
 
         return App.createSourceManga({
