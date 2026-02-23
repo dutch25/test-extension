@@ -2,6 +2,7 @@
     "name": "vi-hentai-extension",
     "version": "1.1.28",
     "repositoryName": "Dutch25",
+    "baseURL": "https://dutch25.github.io/VietSource/",
     "description": "Paperback extension for vi-hentai.pro",
     "scripts": {
         "bundle": "npx paperback bundle",
