@@ -466,7 +466,7 @@ const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.NHentaiClubInfo = {
-    version: '1.1.56',
+    version: '1.1.57',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -664,10 +664,10 @@ class Parser {
         });
         const tagSections = [];
         if (author) {
-            tagSections.push(App.createTagSection({ id: 'author', label: 'Tác Giả', tags: [App.createTag({ id: 'author:' + authorId, label: author })] }));
+            tagSections.push(App.createTagSection({ id: '0', label: 'Tác Giả', tags: [App.createTag({ id: 'author:' + authorId, label: author })] }));
         }
         if (genres.length > 0) {
-            tagSections.push(App.createTagSection({ id: 'genre', label: 'Thể Loại', tags: genres }));
+            tagSections.push(App.createTagSection({ id: '1', label: 'Thể Loại', tags: genres }));
         }
         return App.createSourceManga({
             id: mangaId,
