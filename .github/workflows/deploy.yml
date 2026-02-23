@@ -46,7 +46,7 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{
               "embeds": [{
-                "title": "Vi-Hentai Extension",
+                "title": "Dutch25 Extension",
                 "description": "'"$STATUS"'",
                 "color": 3066993,
                 "fields": [
