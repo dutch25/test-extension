@@ -20,7 +20,7 @@ const BASE_URL = 'https://nhentaiclub.space'
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev'
 
 export const NHentaiClubInfo: SourceInfo = {
-    version: '1.1.53',
+    version: '1.1.54',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -136,7 +136,7 @@ export class NHentaiClub extends Source {
 
         if (selectedTag) {
             if (selectedTag.id.startsWith('author:')) {
-                const authorId = selectedTag.id.replace('author:', '')
+                const authorId = selectedTag.id.replace('author:', '').replace(/ /g, '+')
                 url = `${BASE_URL}/author/${authorId}?page=${page}`
             } else {
                 url = `${BASE_URL}/genre/${selectedTag.id}?page=${page}`

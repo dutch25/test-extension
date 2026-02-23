@@ -466,7 +466,7 @@ const NHentaiClubParser_1 = require("./NHentaiClubParser");
 const BASE_URL = 'https://nhentaiclub.space';
 const PROXY_URL = 'https://nhentai-club-proxy.feedandafk2018.workers.dev';
 exports.NHentaiClubInfo = {
-    version: '1.1.53',
+    version: '1.1.54',
     name: 'NHentaiClub',
     icon: 'icon.png',
     author: 'Dutch25',
@@ -567,7 +567,7 @@ class NHentaiClub extends types_1.Source {
         let url;
         if (selectedTag) {
             if (selectedTag.id.startsWith('author:')) {
-                const authorId = selectedTag.id.replace('author:', '');
+                const authorId = selectedTag.id.replace('author:', '').replace(/ /g, '+');
                 url = `${BASE_URL}/author/${authorId}?page=${page}`;
             }
             else {
@@ -649,7 +649,8 @@ class Parser {
         const desc = $('meta[property="og:description"]').attr('content')?.trim() ?? '';
         const authorLink = $('a[href^="/author/"]').first();
         const author = authorLink.text().trim() ?? '';
-        const authorId = authorLink.attr('href')?.replace('/author/', '').trim() ?? author;
+        const authorHref = authorLink.attr('href') ?? '';
+        const authorId = authorHref.replace('/author/', '').replace(/\?.*/, '').replace(/\+/g, ' ').trim() ?? author;
         const statusText = $('a[href*="status="]').first().text().trim().toLowerCase() ?? '';
         const status = statusText.includes('hoàn thành') || statusText.includes('completed') ? 'Completed' : 'Ongoing';
         const genres = [];

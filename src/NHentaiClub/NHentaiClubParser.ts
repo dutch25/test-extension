@@ -43,7 +43,8 @@ export class Parser {
 
         const authorLink = $('a[href^="/author/"]').first()
         const author = authorLink.text().trim() ?? ''
-        const authorId = authorLink.attr('href')?.replace('/author/', '').trim() ?? author
+        const authorHref = authorLink.attr('href') ?? ''
+        const authorId = authorHref.replace('/author/', '').replace(/\?.*/, '').replace(/\+/g, ' ').trim() ?? author
 
         const statusText = $('a[href*="status="]').first().text().trim().toLowerCase() ?? ''
         const status = statusText.includes('hoàn thành') || statusText.includes('completed') ? 'Completed' : 'Ongoing'
