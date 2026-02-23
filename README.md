@@ -9,6 +9,7 @@ A **Paperback 0.8** extension supporting **two Vietnamese manga sources**:
 
 ## Add to Paperback
 
+[![Add to Paperback](https://img.shields.io/badge/Add_to-Paperback-2e84bf?style=for-the-badge&logo=apple)](https://dutch25.github.io/VietSource/)
 
 1. Go to **Settings → External Sources**
 2. Add this URL: `https://dutch25.github.io/VietSource/`
